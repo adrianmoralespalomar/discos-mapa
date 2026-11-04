@@ -1,0 +1,42 @@
+# Al subir una etiqueta vX.Y.Z se compila el instalable de Windows y se publica en Releases.
+name: Publicar versión
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Discos Mapa ${{ github.ref_name }}
+          releaseBody: |
+            Descarga `Discos Mapa_*_x64-setup.exe` (recomendado) o el `.msi`.
+            El instalador no está firmado: Windows SmartScreen avisará. Pulsa "Más información" y luego "Ejecutar de todas formas".
+          releaseDraft: false
+          prerelease: false

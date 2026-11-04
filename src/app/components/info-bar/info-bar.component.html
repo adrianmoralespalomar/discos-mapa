@@ -1,0 +1,46 @@
+@if (store.hoveredNode(); as node) {
+  <div class="info-node">
+    <span class="info-node-name">{{ node.name }}</span>
+    <span class="info-node-size">{{ node.size | bytes }}</span>
+    @if (node.kind !== 'file') {
+      <span class="info-node-detail">{{ node.fileCount | number: '1.0-0' : 'es' }} ficheros</span>
+    } @else {
+      <span class="info-node-detail">{{ fileCategoryStyles[node.category ?? 'other'].label }}</span>
+    }
+    @if (node.modified) {
+      <span class="info-node-detail">Cambiado {{ node.modified | age }}</span>
+    }
+    @if (node.cloudOnly) {
+      <span class="info-node-detail">Solo en la nube: no ocupa espacio</span>
+    }
+    @if (node.inaccessible) {
+      <span class="info-node-detail">Sin permiso para leerla</span>
+    }
+  </div>
+  <span
+    class="info-path"
+    [title]="node.path">{{ node.path }}</span>
+  @if (store.hoveredRisk(); as risk) {
+    <span
+      class="info-risk"
+      [style.--level-color]="riskLevelStyles[risk.level].color">
+      <strong>{{ riskLevelStyles[risk.level].label }}{{ node.risk ? '' : ' (por la carpeta que lo contiene)' }}.</strong>
+      {{ risk.reason }}
+    </span>
+  }
+} @else if (store.summary(); as summary) {
+  <div class="info-node">
+    <span class="info-node-name">{{ summary.rootPath }}</span>
+    <span class="info-node-size">{{ summary.totalSize | bytes }}</span>
+    <span class="info-node-detail">{{ summary.fileCount | number: '1.0-0' : 'es' }} ficheros</span>
+    <span class="info-node-detail">{{ summary.directoryCount | number: '1.0-0' : 'es' }} carpetas</span>
+    <span class="info-node-detail">Analizado en {{ scanDurationSeconds() | number: '1.0-1' : 'es' }} s</span>
+    @if (summary.inaccessibleCount) {
+      <span class="info-node-detail">{{ summary.inaccessibleCount | number: '1.0-0' : 'es' }} carpetas sin permiso</span>
+    }
+    @if (summary.cancelled) {
+      <span class="info-node-detail info-warning">Análisis detenido: faltan datos</span>
+    }
+  </div>
+  <span class="info-path">Clic para entrar en una carpeta, clic derecho para abrirla en el Explorador, Retroceso para subir.</span>
+}

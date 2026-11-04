@@ -1,0 +1,37 @@
+:root {
+  --color-accent: #24557a;
+  --color-danger: #b8403b;
+  --color-ink: #1e2d3d;
+  --color-ink-soft: #586a7a;
+  --color-line: #c6d0d6;
+  --color-panel: #f7f9fa;
+  --color-paper: #e9eef0;
+  --color-paper-deep: #dfe6ea;
+  --font-condensed: 'Barlow Semi Condensed', 'Segoe UI', sans-serif;
+  --font-text: 'Barlow', 'Segoe UI', sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

@@ -1,0 +1,64 @@
+:host {
+  display: grid;
+  height: 100%;
+  place-items: center;
+}
+
+section.scan {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 720px;
+  padding: 32px;
+  width: 100%;
+
+  span.scan-title {
+    display: block;
+    font-family: var(--font-condensed);
+    font-size: 1.6rem;
+    font-weight: 600;
+  }
+
+  dl.scan-counters {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0;
+
+    dt {
+      color: var(--color-ink-soft);
+      font-size: 0.9rem;
+    }
+
+    dd {
+      font-family: var(--font-condensed);
+      font-size: 2.6rem;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      margin: 0;
+    }
+  }
+
+  span.scan-path {
+    color: var(--color-ink-soft);
+    display: block;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button.scan-stop {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--color-ink);
+    border-radius: 4px;
+    font-weight: 600;
+    padding: 10px 16px;
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+}

@@ -1,0 +1,43 @@
+<label class="largest-filter">
+  <input
+    type="checkbox"
+    [checked]="onlyForgotten()"
+    (change)="onForgottenToggleChanged($event)"/>
+  Solo los que no se tocan desde hace más de un año
+</label>
+
+<ol class="largest-list">
+  @for (file of visibleFiles(); track file.path) {
+    <li class="largest-item">
+      <span
+        class="largest-item-category"
+        [style.background]="fileCategoryStyles[file.category].color"
+        [title]="fileCategoryStyles[file.category].label"></span>
+      <div class="largest-item-text">
+        <span
+          class="largest-item-name"
+          [title]="file.path">{{ file.name }}</span>
+        <span class="largest-item-meta">
+          <span
+            class="largest-item-risk"
+            [style.background]="riskColor(file)"
+            [title]="riskLabel(file)"></span>
+          {{ file.modified | age }}
+        </span>
+      </div>
+      <span class="largest-item-size">{{ file.size | bytes }}</span>
+      <div class="largest-item-actions">
+        @if (file.directoryId !== null) {
+          <button
+            type="button"
+            (click)="onShowFolderButtonClicked(file)">Ver carpeta</button>
+        }
+        <button
+          type="button"
+          (click)="onOpenInExplorerButtonClicked(file)">Explorador</button>
+      </div>
+    </li>
+  } @empty {
+    <li class="largest-empty">No hay ficheros que cumplan el filtro.</li>
+  }
+</ol>

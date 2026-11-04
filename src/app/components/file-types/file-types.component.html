@@ -1,0 +1,40 @@
+<h2 class="types-title">Por tipo de fichero</h2>
+<ul class="types-categories">
+  @for (category of store.summary()?.categories ?? []; track category.category) {
+    <li class="types-category">
+      <span class="types-category-name">{{ fileCategoryStyles[category.category].label }}</span>
+      <span class="types-category-size">{{ category.size | bytes }}</span>
+      <span class="types-category-bar">
+        <span
+          class="types-category-fill"
+          [style.background]="fileCategoryStyles[category.category].color"
+          [style.width.%]="(category.size / largestCategorySize()) * 100"></span>
+      </span>
+    </li>
+  }
+</ul>
+
+<h2 class="types-title">Extensiones que más ocupan</h2>
+<table class="types-extensions">
+  <thead>
+    <tr>
+      <th scope="col">Extensión</th>
+      <th scope="col">Ficheros</th>
+      <th scope="col">Tamaño</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (extension of store.summary()?.extensions ?? []; track extension.extension) {
+      <tr>
+        <td>
+          <span
+            class="types-swatch"
+            [style.background]="fileCategoryStyles[extension.category].color"></span>
+          {{ extension.extension ? '.' + extension.extension : 'sin extensión' }}
+        </td>
+        <td>{{ extension.count | number: '1.0-0' : 'es' }}</td>
+        <td>{{ extension.size | bytes }}</td>
+      </tr>
+    }
+  </tbody>
+</table>

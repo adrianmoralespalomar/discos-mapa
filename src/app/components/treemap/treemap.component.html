@@ -1,0 +1,13 @@
+<canvas
+  #mapCanvas
+  class="treemap-map"
+  aria-label="Mapa de ocupación de la carpeta actual"
+  role="img"></canvas>
+<canvas
+  #overlayCanvas
+  class="treemap-overlay"
+  aria-hidden="true"
+  (click)="onCanvasClicked($event)"
+  (contextmenu)="onCanvasRightClicked($event)"
+  (mouseleave)="onCanvasMouseLeft()"
+  (mousemove)="onCanvasMouseMoved($event)"></canvas>

@@ -1,0 +1,135 @@
+:host {
+  display: grid;
+  height: 100%;
+  overflow: auto;
+  place-items: center;
+}
+
+section.drives {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 760px;
+  padding: 48px 32px;
+  width: 100%;
+
+  header.drives-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  h1.drives-title {
+    font-family: var(--font-condensed);
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    margin: 0;
+  }
+
+  span.drives-intro {
+    color: var(--color-ink-soft);
+    display: block;
+    font-size: 1.05rem;
+    line-height: 1.5;
+    max-width: 58ch;
+  }
+
+  ul.drives-list {
+    display: grid;
+    gap: 10px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  li.drives-empty {
+    color: var(--color-ink-soft);
+  }
+
+  button.drive {
+    align-items: center;
+    background: var(--color-panel);
+    border: 1px solid var(--color-line);
+    border-radius: 6px;
+    column-gap: 18px;
+    display: grid;
+    grid-template-areas:
+      'letter name space'
+      'letter meta space'
+      'letter usage usage';
+    grid-template-columns: 64px 1fr auto;
+    padding: 14px 18px;
+    row-gap: 4px;
+    text-align: left;
+    width: 100%;
+
+    &:hover {
+      border-color: var(--color-accent);
+    }
+  }
+
+  span.drive-letter {
+    font-family: var(--font-condensed);
+    font-size: 2rem;
+    font-weight: 700;
+    grid-area: letter;
+  }
+
+  span.drive-name {
+    font-weight: 600;
+    grid-area: name;
+  }
+
+  span.drive-meta {
+    color: var(--color-ink-soft);
+    font-size: 0.85rem;
+    grid-area: meta;
+  }
+
+  span.drive-space {
+    color: var(--color-ink-soft);
+    font-variant-numeric: tabular-nums;
+    grid-area: space;
+    text-align: right;
+
+    strong {
+      color: var(--color-ink);
+    }
+  }
+
+  span.drive-usage {
+    background: var(--color-paper);
+    border-radius: 2px;
+    display: block;
+    grid-area: usage;
+    height: 8px;
+    margin-top: 6px;
+    overflow: hidden;
+  }
+
+  span.drive-usage-fill {
+    background: var(--color-accent);
+    display: block;
+    height: 100%;
+  }
+
+  span.drive-usage-full {
+    background: var(--color-danger);
+  }
+
+  button.drives-folder {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--color-ink);
+    border-radius: 4px;
+    font-weight: 600;
+    padding: 10px 16px;
+
+    &:hover {
+      background: var(--color-ink);
+      color: var(--color-panel);
+    }
+  }
+}

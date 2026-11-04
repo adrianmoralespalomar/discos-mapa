@@ -1,0 +1,111 @@
+@if (store.errorMessage(); as errorMessage) {
+  <div
+    class="app-error"
+    role="alert">
+    <span>{{ errorMessage }}</span>
+    <button
+      type="button"
+      (click)="onErrorDismissButtonClicked()">Cerrar</button>
+  </div>
+}
+
+@switch (store.screen()) {
+  @case ('drives') {
+    <app-drive-list/>
+  }
+  @case ('scanning') {
+    <app-scan-progress/>
+  }
+  @case ('results') {
+    <div class="results">
+      <header class="results-toolbar">
+        <button
+          class="results-new-scan"
+          type="button"
+          (click)="onNewScanButtonClicked()">Nuevo análisis</button>
+
+        <nav
+          class="results-breadcrumbs"
+          aria-label="Ruta de la carpeta">
+          @for (ancestor of store.ancestors(); track ancestor.id; let last = $last) {
+            <button
+              type="button"
+              [attr.aria-current]="last ? 'location' : null"
+              [disabled]="last"
+              (click)="onBreadcrumbClicked(ancestor.id)">{{ ancestor.name }}</button>
+            @if (!last) {
+              <span
+                class="results-breadcrumb-separator"
+                aria-hidden="true">\</span>
+            }
+          }
+        </nav>
+
+        <div
+          class="results-color-mode"
+          role="group"
+          aria-label="Colorear el mapa por">
+          <span>Colorear por</span>
+          <button
+            type="button"
+            [attr.aria-pressed]="store.colorMode() === 'category'"
+            (click)="onColorModeButtonClicked('category')">Tipo</button>
+          <button
+            type="button"
+            [attr.aria-pressed]="store.colorMode() === 'risk'"
+            (click)="onColorModeButtonClicked('risk')">Riesgo de borrar</button>
+        </div>
+      </header>
+
+      <main class="results-map">
+        <app-treemap/>
+      </main>
+
+      <ul
+        class="results-legend"
+        aria-label="Leyenda del mapa">
+        @if (store.colorMode() === 'category') {
+          @for (style of fileCategoryStyles; track style.label) {
+            <li><span [style.background]="style.color"></span>{{ style.label }}</li>
+          }
+        } @else {
+          @for (style of riskLevels; track style.label) {
+            <li [title]="style.description"><span [style.background]="style.color"></span>{{ style.label }}</li>
+          }
+          <li><span [style.background]="unclassifiedColor"></span>Sin regla conocida</li>
+        }
+      </ul>
+
+      <aside class="results-panel">
+        <div
+          class="results-tabs"
+          role="tablist">
+          @for (item of sidePanelTabs; track item.tab) {
+            <button
+              role="tab"
+              type="button"
+              [attr.aria-selected]="store.sidePanelTab() === item.tab"
+              (click)="onSidePanelTabClicked(item.tab)">{{ item.label }}</button>
+          }
+        </div>
+        <div
+          class="results-tab-content"
+          role="tabpanel">
+          @switch (store.sidePanelTab()) {
+            @case ('cleanup') {
+              <app-cleanup-list/>
+            }
+            @case ('largest') {
+              <app-largest-files/>
+            }
+            @case ('types') {
+              <app-file-types/>
+            }
+          }
+        </div>
+      </aside>
+
+      <app-info-bar class="results-info"/>
+    </div>
+  }
+}

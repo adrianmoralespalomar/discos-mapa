@@ -1,0 +1,17 @@
+:host {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+canvas.treemap-map,
+canvas.treemap-overlay {
+  inset: 0;
+  position: absolute;
+}
+
+canvas.treemap-overlay {
+  cursor: pointer;
+}

@@ -1,0 +1,55 @@
+<div
+  class="cleanup-levels"
+  role="group"
+  aria-label="Filtrar por nivel">
+  @for (total of levelTotals(); track total.level) {
+    <button
+      class="cleanup-level"
+      type="button"
+      [attr.aria-pressed]="selectedLevel() === total.level"
+      [class.cleanup-level-selected]="selectedLevel() === total.level"
+      [style.--level-color]="riskLevelStyles[total.level].color"
+      (click)="onLevelFilterClicked(total.level)">
+      <span class="cleanup-level-name">{{ riskLevelStyles[total.level].label }}</span>
+      <span class="cleanup-level-size">{{ total.size | bytes }}</span>
+      <span class="cleanup-level-count">{{ total.count }} {{ total.count === 1 ? 'sitio' : 'sitios' }}</span>
+    </button>
+  }
+</div>
+
+<span class="cleanup-notice">Esta versión no borra nada. Abre cada sitio en el Explorador y bórralo tú, o usa la herramienta que se indica.</span>
+
+<ul class="cleanup-list">
+  @for (candidate of visibleCandidates(); track candidate.path) {
+    <li
+      class="cleanup-item"
+      [style.--level-color]="riskLevelStyles[candidate.risk.level].color">
+      <div class="cleanup-item-heading">
+        <span class="cleanup-item-name">{{ candidate.name }}</span>
+        <span class="cleanup-item-size">{{ candidate.size | bytes }}</span>
+      </div>
+      <span
+        class="cleanup-item-path"
+        [title]="candidate.path">{{ candidate.path }}</span>
+      <span class="cleanup-item-reason">
+        <strong>{{ riskLevelStyles[candidate.risk.level].label }}.</strong> {{ candidate.risk.reason }}
+      </span>
+      @if (candidate.risk.tip) {
+        <span class="cleanup-item-tip">{{ candidate.risk.tip }}</span>
+      }
+      <div class="cleanup-item-actions">
+        <span class="cleanup-item-age">Último cambio {{ candidate.modified | age }}</span>
+        @if (candidate.directoryId !== null) {
+          <button
+            type="button"
+            (click)="onShowInMapButtonClicked(candidate)">Ver en el mapa</button>
+        }
+        <button
+          type="button"
+          (click)="onOpenInExplorerButtonClicked(candidate)">Abrir en el Explorador</button>
+      </div>
+    </li>
+  } @empty {
+    <li class="cleanup-empty">No hay nada que sugerir en esta carpeta.</li>
+  }
+</ul>

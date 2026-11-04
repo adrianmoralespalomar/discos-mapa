@@ -1,0 +1,28 @@
+<section
+  class="scan"
+  aria-live="polite">
+  <span class="scan-title">Analizando {{ store.scanningPath() }}</span>
+
+  <dl class="scan-counters">
+    <div>
+      <dt>Ficheros</dt>
+      <dd>{{ (store.progress()?.files ?? 0) | number: '1.0-0' : 'es' }}</dd>
+    </div>
+    <div>
+      <dt>Carpetas</dt>
+      <dd>{{ (store.progress()?.directories ?? 0) | number: '1.0-0' : 'es' }}</dd>
+    </div>
+    <div>
+      <dt>Ocupan</dt>
+      <dd>{{ store.progress()?.bytes ?? 0 | bytes }}</dd>
+    </div>
+  </dl>
+
+  <span class="scan-path">{{ store.progress()?.currentPath }}</span>
+
+  <button
+    class="scan-stop"
+    type="button"
+    [disabled]="stopping()"
+    (click)="onStopButtonClicked()">{{ stopping() ? 'Deteniendo…' : 'Detener y ver lo analizado' }}</button>
+</section>

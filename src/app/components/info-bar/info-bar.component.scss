@@ -1,0 +1,59 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  justify-content: center;
+  min-height: 64px;
+  min-width: 0;
+  padding: 8px 16px;
+}
+
+div.info-node {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+
+  span.info-node-name {
+    font-weight: 600;
+    max-width: 40ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span.info-node-size {
+    font-family: var(--font-condensed);
+    font-size: 1.1rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  span.info-node-detail {
+    color: var(--color-ink-soft);
+    font-size: 0.85rem;
+  }
+
+  span.info-warning {
+    color: var(--color-danger);
+  }
+}
+
+span.info-path {
+  color: var(--color-ink-soft);
+  display: block;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+span.info-risk {
+  border-left: 3px solid var(--level-color);
+  display: block;
+  font-size: 0.85rem;
+  overflow: hidden;
+  padding-left: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

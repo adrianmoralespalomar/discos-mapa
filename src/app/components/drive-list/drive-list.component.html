@@ -1,0 +1,43 @@
+<section class="drives">
+  <header class="drives-header">
+    <h1 class="drives-title">Discos Mapa</h1>
+    <span class="drives-intro">Elige un disco o una carpeta. Se dibuja un mapa con lo que ocupa cada cosa y se marca qué se puede borrar sin riesgo.</span>
+  </header>
+
+  <ul class="drives-list">
+    @for (drive of store.drives(); track drive.mountPoint) {
+      <li>
+        <button
+          class="drive"
+          type="button"
+          (click)="onDriveClicked(drive)">
+          <span class="drive-letter">{{ drive.mountPoint }}</span>
+          <span class="drive-name">{{ drive.label || 'Disco local' }}</span>
+          <span class="drive-meta">{{ drive.fileSystem }}{{ drive.removable ? ', extraíble' : '' }}</span>
+          <span
+            class="drive-usage"
+            role="meter"
+            aria-label="Espacio usado"
+            [attr.aria-valuenow]="usedFraction(drive) * 100"
+            aria-valuemin="0"
+            aria-valuemax="100">
+            <span
+              class="drive-usage-fill"
+              [class.drive-usage-full]="usedFraction(drive) > 0.9"
+              [style.width.%]="usedFraction(drive) * 100"></span>
+          </span>
+          <span class="drive-space">
+            <strong>{{ drive.availableSpace | bytes }}</strong> libres de {{ drive.totalSpace | bytes }}
+          </span>
+        </button>
+      </li>
+    } @empty {
+      <li class="drives-empty">Buscando discos…</li>
+    }
+  </ul>
+
+  <button
+    class="drives-folder"
+    type="button"
+    (click)="onPickFolderButtonClicked()">Analizar una carpeta concreta</button>
+</section>
