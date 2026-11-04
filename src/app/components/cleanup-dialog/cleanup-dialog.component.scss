@@ -53,8 +53,13 @@ div.dialog {
     }
   }
 
+  span.dialog-list-name {
+    font-weight: 600;
+  }
+
   span.dialog-list-path {
-    font-size: 0.85rem;
+    color: var(--color-ink-soft);
+    font-size: 0.78rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

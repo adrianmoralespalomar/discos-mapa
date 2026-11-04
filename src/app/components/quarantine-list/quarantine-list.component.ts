@@ -33,7 +33,8 @@ export class QuarantineListComponent implements OnInit {
     this.busyBatch.set(undefined);
     if (!report) return;
     const failures = report.failures.length ? ` ${report.failures.length} no se han podido restaurar.` : '';
-    this.lastMessage.set(`Restaurados ${report.moved.length} elementos (${formatBytes(report.movedSize)}).${failures} Vuelve a analizar para verlos en el mapa.`);
+    const restored = report.moved.length === 1 ? 'Restaurado 1 elemento' : `Restaurados ${report.moved.length} elementos`;
+    this.lastMessage.set(`${restored} (${formatBytes(report.movedSize)}).${failures} Vuelve a analizar para verlo en el mapa.`);
   }
 
   onPurgeButtonClicked(batch: QuarantineBatch): void {

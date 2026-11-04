@@ -172,8 +172,10 @@ div.results {
       border-bottom: 3px solid transparent;
       color: var(--color-ink-soft);
       flex: 1;
+      font-size: 0.88rem;
       font-weight: 600;
-      padding: 12px 8px 9px;
+      padding: 12px 4px 9px;
+      white-space: nowrap;
     }
 
     button[aria-selected='true'] {
