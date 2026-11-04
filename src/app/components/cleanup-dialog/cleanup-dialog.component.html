@@ -1,0 +1,61 @@
+<div
+  class="dialog"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="cleanup-dialog-title">
+  @if (store.cleanupReport(); as report) {
+    <h2
+      id="cleanup-dialog-title"
+      class="dialog-title">Apartados {{ report.moved.length }} {{ report.moved.length === 1 ? 'elemento' : 'elementos' }} ({{ report.movedSize | bytes }})</h2>
+    <span class="dialog-text">Están en la cuarentena de cada disco. Aún ocupan espacio: se libera cuando vacías la cuarentena.</span>
+    @if (report.failures.length) {
+      <span class="dialog-text">{{ report.failures.length }} no se han podido apartar:</span>
+      <ul class="dialog-list">
+        @for (failure of report.failures; track failure.path) {
+          <li>
+            <span
+              class="dialog-list-path"
+              [title]="failure.path">{{ failure.path }}</span>
+            <span class="dialog-list-reason">{{ failure.reason }}</span>
+          </li>
+        }
+      </ul>
+    }
+    <div class="dialog-actions">
+      <button
+        type="button"
+        (click)="onCancelButtonClicked()">Cerrar</button>
+      <button
+        class="dialog-primary"
+        type="button"
+        (click)="onOpenQuarantineButtonClicked()">Ver la cuarentena</button>
+    </div>
+  } @else {
+    <h2
+      id="cleanup-dialog-title"
+      class="dialog-title">¿Mover {{ store.pendingCleanup()?.length }} a la cuarentena?</h2>
+    <span class="dialog-text">No se borra nada todavía: se mueve a una carpeta de cada disco y se puede restaurar. Los ficheros en uso se saltan.</span>
+    <ul class="dialog-list">
+      @for (selection of store.pendingCleanup() ?? []; track selection.path) {
+        <li>
+          <span
+            class="dialog-list-path"
+            [title]="selection.path">{{ selection.path }}</span>
+          <span class="dialog-list-size">{{ selection.size | bytes }}{{ selection.action === 'contents' ? ', solo lo de dentro' : '' }}</span>
+        </li>
+      }
+    </ul>
+    <span class="dialog-total">Total: {{ pendingSize() | bytes }}</span>
+    <div class="dialog-actions">
+      <button
+        type="button"
+        [disabled]="store.cleanupInProgress()"
+        (click)="onCancelButtonClicked()">Cancelar</button>
+      <button
+        class="dialog-primary"
+        type="button"
+        [disabled]="store.cleanupInProgress()"
+        (click)="onConfirmButtonClicked()">{{ store.cleanupInProgress() ? 'Moviendo…' : 'Mover a la cuarentena' }}</button>
+    </div>
+  }
+</div>

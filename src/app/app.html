@@ -101,6 +101,9 @@
             @case ('types') {
               <app-file-types/>
             }
+            @case ('quarantine') {
+              <app-quarantine-list/>
+            }
           }
         </div>
       </aside>
@@ -108,4 +111,8 @@
       <app-info-bar class="results-info"/>
     </div>
   }
+}
+
+@if (store.pendingCleanup()) {
+  <app-cleanup-dialog/>
 }

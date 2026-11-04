@@ -1,8 +1,10 @@
 pub mod file_types;
+pub mod quarantine;
 pub mod rules;
 pub mod scanner;
 pub mod tree;
 
+use quarantine::{CleanupReport, CleanupRequest, PurgeReport, QuarantineBatch};
 use scanner::ScanCounters;
 use serde::Serialize;
 use std::path::Path;
@@ -14,6 +16,7 @@ use tauri::ipc::Channel;
 use tree::{ScanSummary, ScanTree, SummaryInput, TreeResponse};
 
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
+const NO_SCAN_MESSAGE: &str = "No hay ningún análisis abierto";
 
 #[derive(Default)]
 struct AppState {
@@ -42,6 +45,13 @@ struct ScanProgress {
   current_path: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CleanupResult {
+  report: CleanupReport,
+  summary: ScanSummary,
+}
+
 #[tauri::command]
 fn list_drives() -> Result<Vec<DriveInfo>, String> {
   let disks = sysinfo::Disks::new_with_refreshed_list().map_err(|error| error.to_string())?;
@@ -60,6 +70,20 @@ fn list_drives() -> Result<Vec<DriveInfo>, String> {
   Ok(drives)
 }
 
+/// Discos fijos del equipo, como `c:`. Son los únicos donde se permite limpiar.
+fn fixed_drives() -> Vec<String> {
+  sysinfo::Disks::new_with_refreshed_list()
+    .map(|disks| {
+      disks
+        .iter()
+        .filter(|disk| !disk.is_removable())
+        .map(|disk| rules::normalize(&disk.mount_point().to_string_lossy()))
+        .filter(|mount_point| mount_point.len() == 2)
+        .collect()
+    })
+    .unwrap_or_default()
+}
+
 #[tauri::command]
 async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: State<'_, AppState>) -> Result<ScanSummary, String> {
   let root_path = normalize_root_path(&path);
@@ -67,10 +91,10 @@ async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: Stat
     return Err(format!("No existe la carpeta {root_path}"));
   }
   if state.scanning.swap(true, Ordering::SeqCst) {
-    return Err("Ya hay un escaneo en marcha".into());
+    return Err("Ya hay un análisis en marcha".into());
   }
   state.cancelled.store(false, Ordering::SeqCst);
-  // Libera el escaneo anterior antes de empezar otro.
+  // Libera el análisis anterior antes de empezar otro.
   *state.tree.lock().map_err(|error| error.to_string())? = None;
 
   let counters = Arc::new(ScanCounters::new(state.cancelled.clone()));
@@ -81,16 +105,13 @@ async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: Stat
   let scan_counters = counters.clone();
   let result = tauri::async_runtime::spawn_blocking(move || {
     let output = scanner::scan(&root_path, &scan_counters);
-    let tree = ScanTree::build(output.root, &root_path);
-    let summary = tree.summary(
-      output.top_files,
-      output.extensions,
-      SummaryInput {
-        duration_ms: started.elapsed().as_millis() as u64,
-        cancelled: scan_counters.is_cancelled(),
-        inaccessible_count: scan_counters.inaccessible.load(Ordering::Relaxed),
-      },
-    );
+    let summary_input = SummaryInput {
+      duration_ms: started.elapsed().as_millis() as u64,
+      cancelled: scan_counters.is_cancelled(),
+      inaccessible_count: scan_counters.inaccessible.load(Ordering::Relaxed),
+    };
+    let tree = ScanTree::build(output, &root_path, summary_input);
+    let summary = tree.summary();
     (tree, summary)
   })
   .await;
@@ -134,7 +155,33 @@ fn cancel_scan(state: State<'_, AppState>) {
 #[tauri::command]
 fn get_tree(node_id: u32, depth: u8, state: State<'_, AppState>) -> Result<TreeResponse, String> {
   let tree = state.tree.lock().map_err(|error| error.to_string())?;
-  tree.as_ref().and_then(|tree| tree.view(node_id, depth)).ok_or_else(|| "No hay ningÃºn escaneo con esa carpeta".to_string())
+  tree.as_ref().and_then(|tree| tree.view(node_id, depth)).ok_or_else(|| NO_SCAN_MESSAGE.to_string())
+}
+
+/// Aparta a la cuarentena lo pedido y devuelve el resumen ya descontado.
+#[tauri::command]
+async fn quarantine_items(requests: Vec<CleanupRequest>, state: State<'_, AppState>) -> Result<CleanupResult, String> {
+  let mut tree_guard = state.tree.lock().map_err(|error| error.to_string())?;
+  let tree = tree_guard.as_mut().ok_or(NO_SCAN_MESSAGE)?;
+  let report = quarantine::quarantine(&requests, &tree.rules, &fixed_drives(), |path| tree.directory_size(path));
+  let moved_paths: Vec<(String, u64)> = report.moved.iter().map(|item| (item.original_path.clone(), item.size)).collect();
+  tree.remove_moved(&moved_paths);
+  Ok(CleanupResult { report, summary: tree.summary() })
+}
+
+#[tauri::command]
+fn list_quarantine() -> Vec<QuarantineBatch> {
+  quarantine::list(&fixed_drives())
+}
+
+#[tauri::command]
+async fn restore_quarantine_batch(batch_path: String) -> Result<CleanupReport, String> {
+  quarantine::restore(&batch_path)
+}
+
+#[tauri::command]
+async fn purge_quarantine_batch(batch_path: String) -> Result<PurgeReport, String> {
+  quarantine::purge(&batch_path)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -143,7 +190,16 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_opener::init())
     .manage(AppState::default())
-    .invoke_handler(tauri::generate_handler![list_drives, scan_path, cancel_scan, get_tree])
+    .invoke_handler(tauri::generate_handler![
+      list_drives,
+      scan_path,
+      cancel_scan,
+      get_tree,
+      quarantine_items,
+      list_quarantine,
+      restore_quarantine_batch,
+      purge_quarantine_batch
+    ])
     .run(tauri::generate_context!())
     .expect("error al arrancar discos-mapa");
 }

@@ -17,7 +17,13 @@
   }
 </div>
 
-<span class="cleanup-notice">Esta versión no borra nada. Abre cada sitio en el Explorador y bórralo tú, o usa la herramienta que se indica.</span>
+<div class="cleanup-toolbar">
+  <span class="cleanup-notice">Lo que marques se aparta a la cuarentena de su disco. Puedes restaurarlo o vaciarla después.</span>
+  <button
+    class="cleanup-select-safe"
+    type="button"
+    (click)="onSelectSafeButtonClicked()">Marcar todo lo seguro</button>
+</div>
 
 <ul class="cleanup-list">
   @for (candidate of visibleCandidates(); track candidate.path) {
@@ -25,6 +31,13 @@
       class="cleanup-item"
       [style.--level-color]="riskLevelStyles[candidate.risk.level].color">
       <div class="cleanup-item-heading">
+        @if (candidate.risk.action !== 'manual') {
+          <input
+            type="checkbox"
+            [attr.aria-label]="'Marcar ' + candidate.name"
+            [checked]="selectedPaths().has(candidate.path)"
+            (change)="onCandidateCheckboxChanged(candidate, $event)"/>
+        }
         <span class="cleanup-item-name">{{ candidate.name }}</span>
         <span class="cleanup-item-size">{{ candidate.size | bytes }}</span>
       </div>
@@ -34,8 +47,11 @@
       <span class="cleanup-item-reason">
         <strong>{{ riskLevelStyles[candidate.risk.level].label }}.</strong> {{ candidate.risk.reason }}
       </span>
+      @if (candidate.risk.action === 'contents') {
+        <span class="cleanup-item-action">Se aparta lo de dentro; la carpeta se queda.</span>
+      }
       @if (candidate.risk.tip) {
-        <span class="cleanup-item-tip">{{ candidate.risk.tip }}</span>
+        <span class="cleanup-item-tip">{{ candidate.risk.action === 'manual' ? 'Se limpia aparte: ' : 'También: ' }}{{ candidate.risk.tip }}</span>
       }
       <div class="cleanup-item-actions">
         <span class="cleanup-item-age">Último cambio {{ candidate.modified | age }}</span>
@@ -53,3 +69,12 @@
     <li class="cleanup-empty">No hay nada que sugerir en esta carpeta.</li>
   }
 </ul>
+
+@if (selectedCandidates().length) {
+  <div class="cleanup-footer">
+    <span>{{ selectedCandidates().length }} marcados, {{ selectedSize() | bytes }}</span>
+    <button
+      type="button"
+      (click)="onMoveToQuarantineButtonClicked()">Mover a la cuarentena</button>
+  </div>
+}

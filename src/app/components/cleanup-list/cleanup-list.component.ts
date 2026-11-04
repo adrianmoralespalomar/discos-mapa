@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CleanupCandidate } from '../../models/cleanup-candidate.interface';
+import { CleanupSelection } from '../../models/cleanup-selection.interface';
 import { RiskLevelTotal } from '../../models/risk-level-total.interface';
 import { RISK_LEVEL_STYLES, SUGGESTED_RISK_LEVELS } from '../../models/risk-level-styles.const';
 import { RiskLevel } from '../../models/risk-level.type';
@@ -17,6 +18,7 @@ export class CleanupListComponent {
   protected readonly store = inject(DiskScanStore);
   protected readonly riskLevelStyles = RISK_LEVEL_STYLES;
   protected readonly selectedLevel = signal<RiskLevel | undefined>(undefined);
+  protected readonly selectedPaths = signal<Set<string>>(new Set());
 
   protected readonly levelTotals = computed<RiskLevelTotal[]>(() => {
     const summary = this.store.summary();
@@ -31,8 +33,31 @@ export class CleanupListComponent {
     return level ? candidates.filter((candidate) => candidate.risk.level === level) : candidates;
   });
 
+  /** Lo marcado que sigue existiendo en el resumen (tras apartar algo, desaparece de la lista). */
+  protected readonly selectedCandidates = computed<CleanupCandidate[]>(() => {
+    const selectedPaths = this.selectedPaths();
+    return (this.store.summary()?.candidates ?? []).filter((candidate) => selectedPaths.has(candidate.path));
+  });
+
+  protected readonly selectedSize = computed<number>(() => this.selectedCandidates().reduce((total, candidate) => total + candidate.size, 0));
+
   onLevelFilterClicked(level: RiskLevel): void {
     this.selectedLevel.update((selected) => (selected === level ? undefined : level));
+  }
+
+  onSelectSafeButtonClicked(): void {
+    const safePaths = (this.store.summary()?.candidates ?? []).filter((candidate) => candidate.risk.level === 'safe' && candidate.risk.action !== 'manual').map((candidate) => candidate.path);
+    this.selectedPaths.set(new Set(safePaths));
+  }
+
+  onCandidateCheckboxChanged(candidate: CleanupCandidate, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.selectedPaths.update((paths) => {
+      const updated = new Set(paths);
+      if (checked) updated.add(candidate.path);
+      else updated.delete(candidate.path);
+      return updated;
+    });
   }
 
   onShowInMapButtonClicked(candidate: CleanupCandidate): void {
@@ -41,5 +66,15 @@ export class CleanupListComponent {
 
   onOpenInExplorerButtonClicked(candidate: CleanupCandidate): void {
     this.store.revealInExplorer(candidate.path);
+  }
+
+  onMoveToQuarantineButtonClicked(): void {
+    const selections: CleanupSelection[] = this.selectedCandidates().map((candidate) => ({
+      path: candidate.path,
+      name: candidate.name,
+      size: candidate.size,
+      action: candidate.risk.action,
+    }));
+    this.store.requestCleanup(selections);
   }
 }

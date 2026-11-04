@@ -48,11 +48,55 @@ button.cleanup-level-selected {
   border-color: var(--level-color);
 }
 
-span.cleanup-notice {
-  color: var(--color-ink-soft);
-  display: block;
-  font-size: 0.8rem;
-  line-height: 1.4;
+div.cleanup-toolbar {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+
+  span.cleanup-notice {
+    color: var(--color-ink-soft);
+    display: block;
+    flex: 1;
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  button.cleanup-select-safe {
+    background: none;
+    border: 1px solid var(--color-line);
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    white-space: nowrap;
+
+    &:hover {
+      border-color: var(--color-ink);
+    }
+  }
+}
+
+div.cleanup-footer {
+  align-items: center;
+  background: var(--color-ink);
+  border-radius: 4px;
+  bottom: 0;
+  color: var(--color-panel);
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+  position: sticky;
+
+  button {
+    background: var(--color-panel);
+    border: none;
+    border-radius: 3px;
+    color: var(--color-ink);
+    font-weight: 600;
+    padding: 6px 12px;
+  }
 }
 
 ul.cleanup-list {
@@ -77,10 +121,14 @@ li.cleanup-item {
     align-items: baseline;
     display: flex;
     gap: 8px;
-    justify-content: space-between;
+
+    input {
+      margin: 0;
+    }
   }
 
   span.cleanup-item-name {
+    flex: 1;
     font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -102,6 +150,12 @@ li.cleanup-item {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  span.cleanup-item-action {
+    color: var(--color-ink-soft);
+    display: block;
+    font-size: 0.8rem;
   }
 
   span.cleanup-item-reason,

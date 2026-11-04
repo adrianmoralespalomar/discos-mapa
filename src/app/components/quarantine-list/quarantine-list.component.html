@@ -1,0 +1,62 @@
+<span class="quarantine-intro">Aquí está lo que has apartado. Sigue ocupando espacio hasta que lo borras para siempre.</span>
+
+@if (lastMessage(); as message) {
+  <span
+    class="quarantine-message"
+    role="status">{{ message }}</span>
+}
+
+<ul class="quarantine-batches">
+  @for (batch of store.quarantineBatches(); track batch.path) {
+    <li class="quarantine-batch">
+      <div class="quarantine-batch-heading">
+        <span class="quarantine-batch-date">{{ batch.created * 1000 | date: 'd MMM y, HH:mm' : undefined : 'es' }}</span>
+        <span class="quarantine-batch-size">{{ batch.totalSize | bytes }}</span>
+      </div>
+      <button
+        class="quarantine-batch-toggle"
+        type="button"
+        [attr.aria-expanded]="expandedBatch() === batch.path"
+        (click)="onBatchToggleClicked(batch)">{{ batch.items.length }} {{ batch.items.length === 1 ? 'elemento' : 'elementos' }} de {{ batch.path.slice(0, 2) }}</button>
+      @if (expandedBatch() === batch.path) {
+        <ul class="quarantine-items">
+          @for (item of batch.items; track item.storedPath) {
+            <li>
+              <span
+                class="quarantine-item-path"
+                [title]="item.originalPath">{{ item.originalPath }}</span>
+              <span class="quarantine-item-size">{{ item.size | bytes }}</span>
+            </li>
+          }
+        </ul>
+      }
+      <div class="quarantine-batch-actions">
+        @if (batchAwaitingPurge() === batch.path) {
+          <span class="quarantine-purge-question">No se podrá deshacer.</span>
+          <button
+            type="button"
+            (click)="onPurgeCancelButtonClicked()">Cancelar</button>
+          <button
+            class="quarantine-purge-confirm"
+            type="button"
+            (click)="onPurgeConfirmButtonClicked(batch)">Sí, borrar para siempre</button>
+        } @else {
+          <button
+            type="button"
+            [disabled]="busyBatch() === batch.path"
+            (click)="onRestoreButtonClicked(batch)">Restaurar</button>
+          <button
+            type="button"
+            (click)="onOpenInExplorerButtonClicked(batch)">Abrir en el Explorador</button>
+          <button
+            class="quarantine-purge"
+            type="button"
+            [disabled]="busyBatch() === batch.path"
+            (click)="onPurgeButtonClicked(batch)">Borrar para siempre</button>
+        }
+      </div>
+    </li>
+  } @empty {
+    <li class="quarantine-empty">La cuarentena está vacía.</li>
+  }
+</ul>

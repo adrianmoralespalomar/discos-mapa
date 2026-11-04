@@ -44,4 +44,8 @@ export class LargestFilesComponent {
   onOpenInExplorerButtonClicked(file: LargeFile): void {
     this.store.revealInExplorer(file.path);
   }
+
+  onMoveToQuarantineButtonClicked(file: LargeFile): void {
+    this.store.requestCleanup([{ path: file.path, name: file.name, size: file.size, action: 'item' }]);
+  }
 }

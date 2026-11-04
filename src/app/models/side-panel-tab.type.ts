@@ -1,1 +1,1 @@
-export type SidePanelTab = 'cleanup' | 'largest' | 'types';
+export type SidePanelTab = 'cleanup' | 'largest' | 'types' | 'quarantine';

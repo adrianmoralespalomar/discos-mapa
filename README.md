@@ -7,7 +7,22 @@ Mapa visual de lo que ocupa cada carpeta de tus discos (al estilo de WinDirStat)
 - **Más grandes**: los 200 ficheros que más ocupan, con filtro para los que llevan más de un año sin tocarse.
 - **Tipos**: cuánto ocupa cada tipo de fichero y cada extensión.
 
-Esta versión **no borra nada**: solo analiza. Desde cada sugerencia se abre la carpeta en el Explorador.
+- **Cuarentena**: lo que marcas para limpiar se aparta a `X:\DiscosMapa-Cuarentena` en el mismo disco. Se puede restaurar en cualquier momento, y solo se borra de verdad cuando vacías un lote.
+
+## Cómo funciona la limpieza
+
+1. En **Liberar espacio** marca lo que quieras (o "Marcar todo lo seguro") y pulsa **Mover a la cuarentena**. En **Más grandes**, cada fichero tiene un botón **Apartar**.
+2. Se confirma con la lista exacta y el tamaño. Lo que esté en uso o sin permiso se salta y se explica por qué.
+3. En **Cuarentena** cada limpieza es un lote, con **Restaurar** (vuelve todo a su sitio) y **Borrar para siempre** (pide una segunda confirmación). Mientras está en la cuarentena sigue ocupando espacio.
+
+Por qué una cuarentena y no la Papelera: mover dentro del mismo disco es instantáneo, aunque sea un `node_modules` con miles de ficheros. Además, la Papelera de Windows borra para siempre, sin avisar, lo que no le cabe.
+
+Qué nunca se toca:
+
+- Nada de nivel **No tocar** ni lo que haya dentro (el backend lo vuelve a comprobar aunque la interfaz lo pida).
+- Discos extraíbles o de red, y la raíz de un disco.
+- Carpetas que Windows o un programa necesitan (como `Temp`): de esas solo se aparta lo de dentro.
+- Lo que tiene una herramienta oficial (`Windows.old`, `WinSxS`, la Papelera, emuladores de Android, Docker): solo se indica la herramienta.
 
 ## Descargar
 
@@ -71,10 +86,10 @@ cd src-tauri && cargo run --release --example escanear -- "C:\Users"
 - `src-tauri/src/scanner.rs`: recorrido paralelo del disco.
 - `src-tauri/src/rules.rs`: reglas de lo que se puede borrar.
 - `src-tauri/src/tree.rs`: árbol en memoria y vistas reducidas que se envían a la interfaz (nunca el árbol entero).
+- `src-tauri/src/quarantine.rs`: apartar, restaurar y vaciar la cuarentena.
 - `src/app`: interfaz en Angular. El mapa se dibuja en un `canvas` con `d3-hierarchy`.
 
 ## Próximas fases
 
-1. Borrado seguro: a la Papelera o a una cuarentena con deshacer, con simulación previa.
-2. Duplicados y modo desarrollador (limpiar proyectos inactivos).
-3. Historial de análisis para ver qué ha crecido, escaneo del NAS y alertas.
+1. Duplicados y modo desarrollador (limpiar proyectos inactivos).
+2. Historial de análisis para ver qué ha crecido, escaneo del NAS y alertas.

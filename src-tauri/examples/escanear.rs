@@ -14,16 +14,13 @@ fn main() {
   let started = Instant::now();
   let output = scanner::scan(&root_path, &counters);
   let scan_seconds = started.elapsed().as_secs_f64();
-  let tree = ScanTree::build(output.root, &root_path);
-  let summary = tree.summary(
-    output.top_files,
-    output.extensions,
-    SummaryInput {
-      duration_ms: started.elapsed().as_millis() as u64,
-      cancelled: false,
-      inaccessible_count: counters.inaccessible.load(Ordering::Relaxed),
-    },
-  );
+  let summary_input = SummaryInput {
+    duration_ms: started.elapsed().as_millis() as u64,
+    cancelled: false,
+    inaccessible_count: counters.inaccessible.load(Ordering::Relaxed),
+  };
+  let tree = ScanTree::build(output, &root_path, summary_input);
+  let summary = tree.summary();
   let summary_json = serde_json::to_string(&summary).unwrap_or_default();
   let view_json = tree.view(0, 3).map(|view| serde_json::to_string(&view).unwrap_or_default()).unwrap_or_default();
 

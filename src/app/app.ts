@@ -1,9 +1,11 @@
 import { Component, inject } from '@angular/core';
+import { CleanupDialogComponent } from './components/cleanup-dialog/cleanup-dialog.component';
 import { CleanupListComponent } from './components/cleanup-list/cleanup-list.component';
 import { DriveListComponent } from './components/drive-list/drive-list.component';
 import { FileTypesComponent } from './components/file-types/file-types.component';
 import { InfoBarComponent } from './components/info-bar/info-bar.component';
 import { LargestFilesComponent } from './components/largest-files/largest-files.component';
+import { QuarantineListComponent } from './components/quarantine-list/quarantine-list.component';
 import { ScanProgressComponent } from './components/scan-progress/scan-progress.component';
 import { TreemapComponent } from './components/treemap/treemap.component';
 import { FILE_CATEGORY_STYLES } from './models/file-category-styles.const';
@@ -15,7 +17,17 @@ import { DiskScanStore } from './services/disk-scan-store.service';
 
 @Component({
   selector: 'app-root',
-  imports: [CleanupListComponent, DriveListComponent, FileTypesComponent, InfoBarComponent, LargestFilesComponent, ScanProgressComponent, TreemapComponent],
+  imports: [
+    CleanupDialogComponent,
+    CleanupListComponent,
+    DriveListComponent,
+    FileTypesComponent,
+    InfoBarComponent,
+    LargestFilesComponent,
+    QuarantineListComponent,
+    ScanProgressComponent,
+    TreemapComponent,
+  ],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

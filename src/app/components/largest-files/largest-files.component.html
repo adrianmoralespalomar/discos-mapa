@@ -35,6 +35,11 @@
         <button
           type="button"
           (click)="onOpenInExplorerButtonClicked(file)">Explorador</button>
+        @if (file.risk?.level !== 'protected') {
+          <button
+            type="button"
+            (click)="onMoveToQuarantineButtonClicked(file)">Apartar</button>
+        }
       </div>
     </li>
   } @empty {

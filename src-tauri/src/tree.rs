@@ -5,7 +5,7 @@
 
 use crate::file_types::{FileCategory, category_for_extension};
 use crate::rules::{RiskLevel, RiskRule, RuleSet, normalize};
-use crate::scanner::{ExtensionTotals, ScannedDirectory, ScannedFile, TopFile};
+use crate::scanner::{ExtensionTotals, ScanOutput, ScannedDirectory, ScannedFile, TopFile};
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
@@ -36,7 +36,12 @@ pub struct DirectoryRecord {
 pub struct ScanTree {
   pub records: Vec<DirectoryRecord>,
   pub root_inherited_risk: Option<RiskRule>,
-  rules: RuleSet,
+  pub rules: RuleSet,
+  top_files: Vec<TopFile>,
+  extensions: HashMap<String, ExtensionTotals>,
+  summary_input: SummaryInput,
+  /// Rutas (en minúsculas) apartadas a la cuarentena después del escaneo.
+  removed_paths: Vec<String>,
 }
 
 #[derive(Serialize, Clone)]
@@ -156,7 +161,8 @@ pub struct SummaryInput {
 }
 
 impl ScanTree {
-  pub fn build(root: ScannedDirectory, root_path: &str) -> Self {
+  pub fn build(output: ScanOutput, root_path: &str, summary_input: SummaryInput) -> Self {
+    let root = output.root;
     let rules = RuleSet::load();
     let lower_root_path = normalize(root_path);
     let root_inherited_risk = rules.inherited_rule_for(&lower_root_path);
@@ -202,7 +208,15 @@ impl ScanTree {
     for record in &mut records {
       record.children.sort_unstable_by(|a, b| sizes[*b as usize].cmp(&sizes[*a as usize]));
     }
-    Self { records, root_inherited_risk, rules }
+    Self {
+      records,
+      root_inherited_risk,
+      rules,
+      top_files: output.top_files,
+      extensions: output.extensions,
+      summary_input,
+      removed_paths: Vec::new(),
+    }
   }
 
   /// Regla propia o heredada del antepasado más cercano.
@@ -338,7 +352,73 @@ impl ScanTree {
     }
   }
 
-  pub fn summary(&self, output_top_files: Vec<TopFile>, extensions: HashMap<String, ExtensionTotals>, input: SummaryInput) -> ScanSummary {
+  /// Quita del árbol lo que se ha apartado a la cuarentena y descuenta su tamaño de las carpetas superiores.
+  /// Los totales por extensión no se recalculan: siguen siendo los del escaneo.
+  pub fn remove_moved(&mut self, moved_paths: &[(String, u64)]) {
+    let parent_paths: HashSet<String> = moved_paths
+      .iter()
+      .filter_map(|(path, _)| std::path::Path::new(path).parent().map(|parent| normalize(&parent.to_string_lossy())))
+      .collect();
+    let directory_ids: HashMap<String, DirectoryId> = self
+      .records
+      .iter()
+      .enumerate()
+      .filter_map(|(index, record)| {
+        let lower_path = normalize(&record.path);
+        parent_paths.contains(&lower_path).then_some((lower_path, index as DirectoryId))
+      })
+      .collect();
+
+    for (path, size_hint) in moved_paths {
+      let moved_path = std::path::Path::new(path);
+      let lower_name = moved_path.file_name().map(|name| name.to_string_lossy().to_lowercase()).unwrap_or_default();
+      let parent_lower_path = moved_path.parent().map(|parent| normalize(&parent.to_string_lossy())).unwrap_or_default();
+      self.removed_paths.push(normalize(path));
+      let Some(&parent_id) = directory_ids.get(&parent_lower_path) else { continue };
+      let (removed_size, removed_files) = self.detach_entry(parent_id, &lower_name, *size_hint);
+      let mut current = Some(parent_id);
+      while let Some(current_id) = current {
+        let record = &mut self.records[current_id as usize];
+        record.size = record.size.saturating_sub(removed_size);
+        record.file_count = record.file_count.saturating_sub(removed_files);
+        current = record.parent;
+      }
+    }
+  }
+
+  /// Saca una carpeta o un fichero de su carpeta padre y devuelve (bytes, ficheros) quitados.
+  fn detach_entry(&mut self, parent_id: DirectoryId, lower_name: &str, size_hint: u64) -> (u64, u64) {
+    let child_position = self.records[parent_id as usize].children.iter().position(|child| self.records[*child as usize].name.to_lowercase() == lower_name);
+    if let Some(position) = child_position {
+      let child_id = self.records[parent_id as usize].children.remove(position);
+      let child = &mut self.records[child_id as usize];
+      let removed = (child.size, child.file_count);
+      child.size = 0;
+      child.file_count = 0;
+      child.children.clear();
+      child.files.clear();
+      child.other_files_size = 0;
+      child.other_files_count = 0;
+      return removed;
+    }
+    let parent = &mut self.records[parent_id as usize];
+    if let Some(position) = parent.files.iter().position(|file| file.name.to_lowercase() == lower_name) {
+      return (parent.files.remove(position).size, 1);
+    }
+    // Fichero pequeño que se había agrupado en "otros".
+    let removed_size = size_hint.min(parent.other_files_size);
+    parent.other_files_size -= removed_size;
+    parent.other_files_count = parent.other_files_count.saturating_sub(1);
+    (removed_size, 1)
+  }
+
+  pub fn directory_size(&self, path: &str) -> Option<u64> {
+    let lower_path = normalize(path);
+    self.records.iter().find(|record| normalize(&record.path) == lower_path).map(|record| record.size)
+  }
+
+  pub fn summary(&self) -> ScanSummary {
+    let input = &self.summary_input;
     let root = &self.records[0];
     let (candidates, recoverable_safe, recoverable_probable, review_size) = self.cleanup_candidates();
     ScanSummary {
@@ -350,9 +430,9 @@ impl ScanTree {
       inaccessible_count: input.inaccessible_count,
       duration_ms: input.duration_ms,
       cancelled: input.cancelled,
-      top_files: self.top_file_views(output_top_files),
-      categories: category_stats(&extensions),
-      extensions: extension_stats(extensions),
+      top_files: self.top_file_views(),
+      categories: category_stats(&self.extensions),
+      extensions: extension_stats(&self.extensions),
       candidates,
       recoverable_safe,
       recoverable_probable,
@@ -360,7 +440,15 @@ impl ScanTree {
     }
   }
 
-  fn top_file_views(&self, top_files: Vec<TopFile>) -> Vec<FileView> {
+  fn top_file_views(&self) -> Vec<FileView> {
+    let top_files: Vec<&TopFile> = self
+      .top_files
+      .iter()
+      .filter(|file| {
+        let lower_path = normalize(&join_path(&file.parent_path, &file.name));
+        !self.removed_paths.iter().any(|removed| lower_path == *removed || lower_path.starts_with(&format!("{removed}\\")))
+      })
+      .collect();
     let parent_paths: HashSet<&str> = top_files.iter().map(|file| file.parent_path.as_str()).collect();
     let directory_ids: HashMap<&str, DirectoryId> = self
       .records
@@ -443,10 +531,10 @@ impl ScanTree {
   }
 }
 
-fn extension_stats(extensions: HashMap<String, ExtensionTotals>) -> Vec<ExtensionStat> {
+fn extension_stats(extensions: &HashMap<String, ExtensionTotals>) -> Vec<ExtensionStat> {
   let mut stats: Vec<ExtensionStat> = extensions
-    .into_iter()
-    .map(|(extension, totals)| ExtensionStat { category: category_for_extension(&extension), extension, size: totals.size, count: totals.count })
+    .iter()
+    .map(|(extension, totals)| ExtensionStat { category: category_for_extension(extension), extension: extension.clone(), size: totals.size, count: totals.count })
     .collect();
   stats.sort_unstable_by(|a, b| b.size.cmp(&a.size));
   stats.truncate(EXTENSIONS_LIMIT);
