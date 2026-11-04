@@ -1,3 +1,9 @@
+@if (!store.summary()?.canClean) {
+  <span
+    class="cleanup-unavailable"
+    role="note">{{ cleanupUnavailableMessage }}</span>
+}
+
 <div
   class="cleanup-levels"
   role="group"

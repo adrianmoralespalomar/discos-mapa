@@ -18,6 +18,7 @@ fn main() {
     duration_ms: started.elapsed().as_millis() as u64,
     cancelled: false,
     inaccessible_count: counters.inaccessible.load(Ordering::Relaxed),
+    can_clean: false,
   };
   let tree = ScanTree::build(output, &root_path, summary_input);
   let summary = tree.summary();

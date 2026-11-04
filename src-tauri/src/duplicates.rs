@@ -155,7 +155,7 @@ fn split_by_content(group: Vec<Candidate>, counters: &DuplicateCounters) -> Vec<
   let mut result = Vec::new();
   for partial_group in by_partial.into_values().filter(|group| group.len() > 1) {
     // Huella completa e identidad del fichero en disco (para descartar enlaces duros).
-    let mut by_full: HashMap<[u8; 32], Vec<(Candidate, (u32, u64))>> = HashMap::new();
+    let mut by_full: HashMap<[u8; 32], Vec<(Candidate, Option<(u32, u64)>)>> = HashMap::new();
     for candidate in partial_group {
       if counters.cancelled.load(Ordering::Relaxed) {
         return Vec::new();
@@ -168,7 +168,7 @@ fn split_by_content(group: Vec<Candidate>, counters: &DuplicateCounters) -> Vec<
     for mut same_content in by_full.into_values() {
       same_content.sort_by_key(|(candidate, _)| candidate.file.modified);
       let mut seen_identities = std::collections::HashSet::new();
-      same_content.retain(|(_, identity)| seen_identities.insert(*identity));
+      same_content.retain(|(_, identity)| identity.is_none_or(|identity| seen_identities.insert(identity)));
       if same_content.len() > 1 {
         let files: Vec<DuplicateFile> = same_content.into_iter().map(|(candidate, _)| candidate.file).collect();
         result.push(DuplicateGroup { size, wasted_size: size * (files.len() as u64 - 1), files });
@@ -193,9 +193,9 @@ fn partial_hash(path: &str, size: u64) -> Option<[u8; 32]> {
 }
 
 /// Huella de todo el fichero y su identidad (volumen, índice). `already_complete` evita releer los pequeños.
-fn full_hash(path: &str, already_complete: bool, counters: &DuplicateCounters) -> Option<([u8; 32], (u32, u64))> {
+fn full_hash(path: &str, already_complete: bool, counters: &DuplicateCounters) -> Option<([u8; 32], Option<(u32, u64)>)> {
   let mut file = File::open(path).ok()?;
-  let identity = file_identity(&file)?;
+  let identity = file_identity(&file);
   let mut hasher = blake3::Hasher::new();
   let mut buffer = vec![0; READ_BUFFER_BYTES];
   if already_complete {
@@ -218,10 +218,12 @@ fn full_hash(path: &str, already_complete: bool, counters: &DuplicateCounters) -
   Some((*hasher.finalize().as_bytes(), identity))
 }
 
+/// Algunos servidores SMB devuelven índice 0 para todo: entonces no se sabe y no se usa para descartar copias.
 fn file_identity(file: &File) -> Option<(u32, u64)> {
   use windows_sys::Win32::Storage::FileSystem::{BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle};
   let mut information: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
   // SAFETY: el handle es válido mientras `file` esté abierto y la estructura es de solo salida.
   let ok = unsafe { GetFileInformationByHandle(file.as_raw_handle(), &mut information) };
-  (ok != 0).then(|| (information.dwVolumeSerialNumber, (u64::from(information.nFileIndexHigh) << 32) | u64::from(information.nFileIndexLow)))
+  let index = (u64::from(information.nFileIndexHigh) << 32) | u64::from(information.nFileIndexLow);
+  (ok != 0 && index != 0).then_some((information.dwVolumeSerialNumber, index))
 }

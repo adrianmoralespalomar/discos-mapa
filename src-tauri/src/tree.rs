@@ -154,12 +154,15 @@ pub struct ScanSummary {
   pub recoverable_safe: u64,
   pub recoverable_probable: u64,
   pub review_size: u64,
+  /// Falso en carpetas de red o discos extraíbles: ahí solo se mira, no se aparta nada.
+  pub can_clean: bool,
 }
 
 pub struct SummaryInput {
   pub duration_ms: u64,
   pub cancelled: bool,
   pub inaccessible_count: u64,
+  pub can_clean: bool,
 }
 
 impl ScanTree {
@@ -455,6 +458,7 @@ impl ScanTree {
       recoverable_safe,
       recoverable_probable,
       review_size,
+      can_clean: input.can_clean,
     }
   }
 

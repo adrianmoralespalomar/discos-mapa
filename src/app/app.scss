@@ -165,7 +165,7 @@ div.results {
   div.results-tabs {
     border-bottom: 1px solid var(--color-line);
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
 
     button {
       background: none;

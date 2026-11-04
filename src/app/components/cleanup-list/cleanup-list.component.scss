@@ -4,6 +4,15 @@
   gap: 12px;
 }
 
+span.cleanup-unavailable {
+  background: var(--color-paper);
+  border-left: 3px solid var(--color-ink-soft);
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  padding: 8px 10px;
+}
+
 div.cleanup-levels {
   display: grid;
   gap: 6px;

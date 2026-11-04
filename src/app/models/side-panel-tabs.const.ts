@@ -6,5 +6,6 @@ export const SIDE_PANEL_TABS: SidePanelTabOption[] = [
   { tab: 'duplicates', label: 'Duplicados' },
   { tab: 'largest', label: 'Más grandes' },
   { tab: 'types', label: 'Tipos' },
+  { tab: 'changes', label: 'Cambios' },
   { tab: 'quarantine', label: 'Cuarentena' },
 ];

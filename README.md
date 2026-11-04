@@ -8,6 +8,8 @@ Mapa visual de lo que ocupa cada carpeta de tus discos (al estilo de WinDirStat)
 - **Tipos**: cuánto ocupa cada tipo de fichero y cada extensión.
 - **Proyectos**: proyectos de código (Node, Rust, .NET, Gradle, Python, Maven) sin tocar desde hace 30, 90, 180 o 365 días, con sus carpetas regenerables (`node_modules`, `dist`, `target`, `bin/obj`…) y un botón para apartarlas. La actividad se mide sin contar esas carpetas.
 - **Duplicados**: ficheros de más de 1 MB con exactamente el mismo contenido, con la opción **Dejar solo la más antigua**.
+- **Cambios**: qué carpetas han crecido más de 50 MB desde el análisis anterior de la misma carpeta, y cuánto ocupaba en cada análisis.
+- **Carpetas de red**: se puede analizar una ruta como `\\servidor\carpeta` (por ejemplo, un NAS). Ahí solo se mira: la cuarentena no funciona en red.
 - **Cuarentena**: lo que marcas para limpiar se aparta a `X:\DiscosMapa-Cuarentena` en el mismo disco. Se puede restaurar en cualquier momento, y solo se borra de verdad cuando vacías un lote.
 
 ## Cómo funciona la limpieza
@@ -21,7 +23,7 @@ Por qué una cuarentena y no la Papelera: mover dentro del mismo disco es instan
 Qué nunca se toca:
 
 - Nada de nivel **No tocar** ni lo que haya dentro (el backend lo vuelve a comprobar aunque la interfaz lo pida).
-- Discos extraíbles, de red o que no sean NTFS/ReFS (como la unidad de Google Drive), y la raíz de un disco.
+- Discos extraíbles, de red (también las unidades de red con letra, aunque digan ser NTFS) o que no sean NTFS/ReFS (como la unidad de Google Drive), y la raíz de un disco.
 - Carpetas de OneDrive y ficheros que están solo en la nube: apartarlos los borraría en todos tus equipos.
 - Carpetas que Windows o un programa necesitan (como `Temp`): de esas solo se aparta lo de dentro.
 - Lo que tiene una herramienta oficial (`Windows.old`, la Papelera, emuladores de Android, el disco de Docker): solo se indica la herramienta, y no se puede apartar nada de dentro, ni siquiera un fichero suelto.
@@ -55,6 +57,13 @@ Reglas generales:
 - No entra en enlaces simbólicos ni uniones (*junctions*), para no contar dos veces ni entrar en bucles.
 - Los ficheros de OneDrive que están solo en la nube cuentan 0 bytes.
 - Pendiente: los enlaces duros (frecuentes en `WinSxS`) se cuentan una vez por enlace, así que esa carpeta aparece más grande de lo que es.
+## Historial
+
+- Cada análisis completo se guarda en `%APPDATA%\com.adrianmoralespalomar.discosmapa\historial`: la fecha y el tamaño total de los últimos 50 análisis de cada carpeta, y el tamaño de cada subcarpeta del último (solo las de más de 10 MB y hasta 6 niveles).
+- Un análisis detenido a medias no se guarda.
+- La cuarentena no cuenta como crecimiento.
+- La pantalla inicial lista las carpetas analizadas antes, para repetir el análisis con un clic (útil para las carpetas de red).
+
 ## Cómo se buscan los duplicados
 
 - Solo en tus carpetas: no entra en programas, `AppData`, carpetas que empiezan por punto, zonas con herramienta oficial ni carpetas regenerables o seguras de borrar (ahí los repetidos son normales).
@@ -86,7 +95,7 @@ cd src-tauri && cargo run --release --example escanear -- "C:\Users"
 ## Publicar una versión
 
 1. Sube el número de versión en `package.json`, `src-tauri/Cargo.toml` y `src-tauri/tauri.conf.json`.
-2. Crea y sube la etiqueta: `git tag v0.2.0 && git push origin v0.2.0`.
+2. Crea y sube la etiqueta: `git tag v0.3.0 && git push origin v0.3.0`.
 3. La acción de GitHub `Publicar versión` compila el instalador y lo publica en Releases.
 
 ## Estructura
@@ -97,8 +106,10 @@ cd src-tauri && cargo run --release --example escanear -- "C:\Users"
 - `src-tauri/src/quarantine.rs`: apartar, restaurar y vaciar la cuarentena.
 - `src-tauri/src/projects.rs`: proyectos de código y sus carpetas regenerables.
 - `src-tauri/src/duplicates.rs`: búsqueda de ficheros repetidos.
+- `src-tauri/src/history.rs`: historial de análisis y comparación con el anterior.
 - `src/app`: interfaz en Angular. El mapa se dibuja en un `canvas` con `d3-hierarchy`.
 
 ## Próximas fases
 
-1. Historial de análisis para ver qué ha crecido, escaneo del NAS y alertas.
+- Alertas cuando un disco se llena o una carpeta crece de golpe.
+- Contar una sola vez los enlaces duros.

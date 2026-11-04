@@ -19,4 +19,6 @@ export interface ScanSummary {
   recoverableSafe: number;
   recoverableProbable: number;
   reviewSize: number;
+  /** Falso en carpetas de red o discos extraíbles: ahí solo se mira, no se aparta nada. */
+  canClean: boolean;
 }

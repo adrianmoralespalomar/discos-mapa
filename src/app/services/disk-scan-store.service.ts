@@ -5,6 +5,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { Ancestor } from '../models/ancestor.interface';
 import { AppScreen } from '../models/app-screen.type';
 import { CLEANABLE_ACTIONS } from '../models/cleanable-actions.const';
+import { CLEANUP_UNAVAILABLE_MESSAGE } from '../models/cleanup-settings.const';
 import { CleanupReport } from '../models/cleanup-report.interface';
 import { CleanupRequest } from '../models/cleanup-request.interface';
 import { CleanupResult } from '../models/cleanup-result.interface';
@@ -16,6 +17,8 @@ import { DuplicatesResult } from '../models/duplicates-result.interface';
 import { PurgeReport } from '../models/purge-report.interface';
 import { QuarantineBatch } from '../models/quarantine-batch.interface';
 import { RiskInfo } from '../models/risk-info.interface';
+import { ScanComparison } from '../models/scan-comparison.interface';
+import { ScannedRoot } from '../models/scanned-root.interface';
 import { ScanProgress } from '../models/scan-progress.interface';
 import { ScanSummary } from '../models/scan-summary.interface';
 import { SidePanelTab } from '../models/side-panel-tab.type';
@@ -31,6 +34,8 @@ export class DiskScanStore {
   readonly cleanupInProgress = signal<boolean>(false);
   readonly cleanupReport = signal<CleanupReport | undefined>(undefined);
   readonly colorMode = signal<TreemapColorMode>('category');
+  /** Qué ha crecido desde el análisis anterior; `null` si este no se ha guardado en el historial. */
+  readonly comparison = signal<ScanComparison | null>(null);
   readonly currentNode = signal<TreeNode | undefined>(undefined);
   readonly drives = signal<DriveInfo[]>([]);
   readonly duplicateProgress = signal<DuplicateProgress | undefined>(undefined);
@@ -45,6 +50,7 @@ export class DiskScanStore {
   readonly progress = signal<ScanProgress | undefined>(undefined);
   readonly projects = signal<DevelopmentProject[]>([]);
   readonly quarantineBatches = signal<QuarantineBatch[]>([]);
+  readonly scannedRoots = signal<ScannedRoot[]>([]);
   readonly scanningPath = signal<string>('');
   readonly screen = signal<AppScreen>('drives');
   readonly sidePanelTab = signal<SidePanelTab>('cleanup');
@@ -56,6 +62,10 @@ export class DiskScanStore {
     } catch (error) {
       this.errorMessage.set(`No se han podido leer los discos: ${error}`);
     }
+  }
+
+  async loadScannedRoots(): Promise<void> {
+    this.scannedRoots.set(await invoke<ScannedRoot[]>('list_scanned_roots'));
   }
 
   async pickFolderAndScan(): Promise<void> {
@@ -75,6 +85,7 @@ export class DiskScanStore {
       this.summary.set(summary);
       this.duplicates.set(undefined);
       this.projects.set([]);
+      this.comparison.set(await invoke<ScanComparison | null>('get_scan_comparison'));
       await this.openDirectory(summary.rootId);
       this.screen.set('results');
     } catch (error) {
@@ -119,6 +130,7 @@ export class DiskScanStore {
 
   /** Abre la confirmación; no se mueve nada hasta `confirmCleanup`. */
   requestCleanup(selections: CleanupSelection[]): void {
+    if (!this.summary()?.canClean) return this.errorMessage.set(CLEANUP_UNAVAILABLE_MESSAGE);
     const cleanable = selections.filter((selection) => CLEANABLE_ACTIONS.includes(selection.action));
     if (!cleanable.length) return;
     this.cleanupReport.set(undefined);

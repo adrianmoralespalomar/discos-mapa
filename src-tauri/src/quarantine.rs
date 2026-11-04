@@ -323,7 +323,7 @@ fn quarantine_root(drive: &str) -> PathBuf {
 }
 
 /// `c:` para cualquier ruta `C:\...`; nada para rutas de red.
-fn drive_of(lower_path: &str) -> Option<String> {
+pub fn drive_of(lower_path: &str) -> Option<String> {
   let bytes = lower_path.as_bytes();
   (bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic()).then(|| lower_path[..2].to_string())
 }

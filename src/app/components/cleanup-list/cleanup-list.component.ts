@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { CLEANABLE_ACTIONS } from '../../models/cleanable-actions.const';
 import { CleanupCandidate } from '../../models/cleanup-candidate.interface';
 import { CleanupSelection } from '../../models/cleanup-selection.interface';
+import { CLEANUP_UNAVAILABLE_MESSAGE } from '../../models/cleanup-settings.const';
 import { RiskLevelTotal } from '../../models/risk-level-total.interface';
 import { RISK_LEVEL_STYLES, SUGGESTED_RISK_LEVELS } from '../../models/risk-level-styles.const';
 import { RiskLevel } from '../../models/risk-level.type';
@@ -17,6 +18,7 @@ import { DiskScanStore } from '../../services/disk-scan-store.service';
 })
 export class CleanupListComponent {
   protected readonly store = inject(DiskScanStore);
+  protected readonly cleanupUnavailableMessage = CLEANUP_UNAVAILABLE_MESSAGE;
   protected readonly riskLevelStyles = RISK_LEVEL_STYLES;
   protected readonly selectedLevel = signal<RiskLevel | undefined>(undefined);
   protected readonly selectedPaths = signal<Set<string>>(new Set());

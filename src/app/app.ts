@@ -8,6 +8,7 @@ import { InfoBarComponent } from './components/info-bar/info-bar.component';
 import { LargestFilesComponent } from './components/largest-files/largest-files.component';
 import { ProjectListComponent } from './components/project-list/project-list.component';
 import { QuarantineListComponent } from './components/quarantine-list/quarantine-list.component';
+import { ScanChangesComponent } from './components/scan-changes/scan-changes.component';
 import { ScanProgressComponent } from './components/scan-progress/scan-progress.component';
 import { TreemapComponent } from './components/treemap/treemap.component';
 import { FILE_CATEGORY_STYLES } from './models/file-category-styles.const';
@@ -29,6 +30,7 @@ import { DiskScanStore } from './services/disk-scan-store.service';
     LargestFilesComponent,
     ProjectListComponent,
     QuarantineListComponent,
+    ScanChangesComponent,
     ScanProgressComponent,
     TreemapComponent,
   ],

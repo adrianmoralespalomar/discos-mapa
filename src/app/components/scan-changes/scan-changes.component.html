@@ -1,0 +1,51 @@
+@if (store.comparison(); as comparison) {
+  @if (comparison.previousScan; as previousScan) {
+    <div class="changes-summary">
+      <span class="changes-summary-label">Desde el {{ previousScan.scannedAt * 1000 | date: 'd MMM y, HH:mm' : undefined : 'es' }}</span>
+      <span class="changes-summary-value">{{ totalChange() >= 0 ? '+' : '−' }}{{ (totalChange() >= 0 ? totalChange() : -totalChange()) | bytes }}</span>
+    </div>
+
+    <span class="changes-intro">Carpetas que han crecido más de 50 MB. Si una subcarpeta explica casi todo lo que ha crecido su carpeta, solo sale la subcarpeta.</span>
+
+    <ul class="changes-list">
+      @for (entry of comparison.grown; track entry.directoryId) {
+        <li class="change">
+          <div class="change-heading">
+            <span class="change-name">{{ entry.name }}</span>
+            <span class="change-growth">+{{ growthOf(entry) | bytes }}</span>
+          </div>
+          <span
+            class="change-path"
+            [title]="entry.path">{{ entry.path }}</span>
+          <div class="change-meta">
+            <span>{{ entry.isNew ? 'Nueva, ahora ocupa ' : 'De ' + (entry.previousSize | bytes) + ' a ' }}{{ entry.currentSize | bytes }}</span>
+            <button
+              type="button"
+              (click)="onShowInMapButtonClicked(entry)">Ver en el mapa</button>
+          </div>
+        </li>
+      } @empty {
+        <li class="changes-empty">Ninguna carpeta ha crecido más de 50 MB.</li>
+      }
+    </ul>
+
+    <h3 class="changes-history-title">Análisis de esta carpeta</h3>
+    <ol class="changes-history">
+      @for (scan of comparison.scans; track scan.scannedAt) {
+        <li>
+          <span class="changes-history-date">{{ scan.scannedAt * 1000 | date: 'd MMM y, HH:mm' : undefined : 'es' }}</span>
+          <span class="changes-history-bar">
+            <span
+              class="changes-history-fill"
+              [style.width.%]="scanBarPercent(scan)"></span>
+          </span>
+          <span class="changes-history-size">{{ scan.totalSize | bytes }}</span>
+        </li>
+      }
+    </ol>
+  } @else {
+    <span class="changes-intro">Es el primer análisis de {{ comparison.rootPath }}. Queda guardado: la próxima vez que lo analices verás aquí qué ha crecido.</span>
+  }
+} @else {
+  <span class="changes-intro">{{ store.summary()?.cancelled ? 'El análisis se detuvo antes de acabar, así que no se ha guardado para comparar.' : 'No se ha podido guardar este análisis en el historial.' }}</span>
+}

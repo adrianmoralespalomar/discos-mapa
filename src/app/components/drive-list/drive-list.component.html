@@ -36,8 +36,44 @@
     }
   </ul>
 
-  <button
-    class="drives-folder"
-    type="button"
-    (click)="onPickFolderButtonClicked()">Analizar una carpeta concreta</button>
+  <div class="drives-other">
+    <button
+      class="drives-folder"
+      type="button"
+      (click)="onPickFolderButtonClicked()">Analizar una carpeta concreta</button>
+
+    <form
+      class="drives-network"
+      (submit)="onNetworkPathSubmitted($event, networkPathInput.value)">
+      <label for="drives-network-path">Carpeta de red</label>
+      <input
+        #networkPathInput
+        id="drives-network-path"
+        type="text"
+        placeholder="\\servidor\carpeta"
+        spellcheck="false"
+        required/>
+      <button type="submit">Analizar</button>
+    </form>
+  </div>
+
+  @if (store.scannedRoots().length) {
+    <section class="drives-history">
+      <h2 class="drives-history-title">Analizados antes</h2>
+      <ul class="drives-history-list">
+        @for (root of store.scannedRoots(); track root.rootPath) {
+          <li>
+            <button
+              type="button"
+              (click)="onScannedRootClicked(root)">
+              <span
+                class="drives-history-path"
+                [title]="root.rootPath">{{ root.rootPath }}</span>
+              <span class="drives-history-meta">{{ root.lastScan.totalSize | bytes }}, {{ root.lastScan.scannedAt | age }}</span>
+            </button>
+          </li>
+        }
+      </ul>
+    </section>
+  }
 </section>

@@ -2,7 +2,7 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Discos Mapa",
   "mainBinaryName": "discos-mapa",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "identifier": "com.adrianmoralespalomar.discosmapa",
   "build": {
     "frontendDist": "../dist/discos-mapa/browser",

@@ -1,5 +1,6 @@
 pub mod duplicates;
 pub mod file_types;
+pub mod history;
 pub mod projects;
 pub mod quarantine;
 pub mod rules;
@@ -7,21 +8,25 @@ pub mod scanner;
 pub mod tree;
 
 use duplicates::{DuplicateCounters, DuplicatesResult};
+use history::{ScanComparison, ScannedRoot};
 use projects::ProjectView;
 use quarantine::{CleanupReport, CleanupRequest, PurgeReport, QuarantineBatch};
 use scanner::ScanCounters;
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 use tauri::ipc::Channel;
 use tree::{ScanSummary, ScanTree, SummaryInput, TreeResponse};
 
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
 const NO_SCAN_MESSAGE: &str = "No hay ningún análisis abierto";
 const LOCAL_FILE_SYSTEMS: &[&str] = &["NTFS", "REFS"];
+const HISTORY_FOLDER_NAME: &str = "historial";
+/// Valor de `GetDriveTypeW` para un disco fijo (los de red son `DRIVE_REMOTE`).
+const DRIVE_FIXED: u32 = 3;
 
 #[derive(Default)]
 struct AppState {
@@ -29,6 +34,7 @@ struct AppState {
   cancelled: Arc<AtomicBool>,
   scanning: AtomicBool,
   duplicate_counters: Mutex<Option<Arc<DuplicateCounters>>>,
+  comparison: Mutex<Option<ScanComparison>>,
 }
 
 #[derive(Serialize, Clone)]
@@ -84,8 +90,9 @@ fn list_drives() -> Result<Vec<DriveInfo>, String> {
   Ok(drives)
 }
 
-/// Discos fijos NTFS o ReFS del equipo, como `c:`. Son los únicos donde se permite limpiar
-/// (las unidades de Google Drive y similares se montan con otros sistemas de ficheros, como FAT32).
+/// Discos fijos NTFS o ReFS del equipo, como `c:`. Son los únicos donde se permite limpiar.
+/// Las unidades de Google Drive y similares se montan con otros sistemas de ficheros (como FAT32), y las
+/// unidades de red mapeadas pueden decir que son NTFS (Samba lo hace), por eso se mira también el tipo.
 fn fixed_drives() -> Vec<String> {
   sysinfo::Disks::new_with_refreshed_list()
     .map(|disks| {
@@ -94,14 +101,20 @@ fn fixed_drives() -> Vec<String> {
         .filter(|disk| !disk.is_removable())
         .filter(|disk| LOCAL_FILE_SYSTEMS.contains(&disk.file_system().to_string_lossy().to_uppercase().as_str()))
         .map(|disk| rules::normalize(&disk.mount_point().to_string_lossy()))
-        .filter(|mount_point| mount_point.len() == 2)
+        .filter(|mount_point| mount_point.len() == 2 && is_fixed_drive(mount_point))
         .collect()
     })
     .unwrap_or_default()
 }
 
+fn is_fixed_drive(mount_point: &str) -> bool {
+  let wide_root: Vec<u16> = format!("{mount_point}\\").encode_utf16().chain(std::iter::once(0)).collect();
+  // SAFETY: la cadena termina en 0 y vive durante la llamada.
+  unsafe { windows_sys::Win32::Storage::FileSystem::GetDriveTypeW(wide_root.as_ptr()) == DRIVE_FIXED }
+}
+
 #[tauri::command]
-async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: State<'_, AppState>) -> Result<ScanSummary, String> {
+async fn scan_path(path: String, on_progress: Channel<ScanProgress>, app: AppHandle, state: State<'_, AppState>) -> Result<ScanSummary, String> {
   let root_path = normalize_root_path(&path);
   if !Path::new(&root_path).is_dir() {
     return Err(format!("No existe la carpeta {root_path}"));
@@ -112,6 +125,9 @@ async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: Stat
   state.cancelled.store(false, Ordering::SeqCst);
   // Libera el análisis anterior antes de empezar otro.
   *state.tree.lock().map_err(|error| error.to_string())? = None;
+  *state.comparison.lock().map_err(|error| error.to_string())? = None;
+  let can_clean = quarantine::drive_of(&rules::normalize(&root_path)).is_some_and(|drive| fixed_drives().contains(&drive));
+  let history_dir = history_dir(&app);
 
   let counters = Arc::new(ScanCounters::new(state.cancelled.clone()));
   let finished = Arc::new(AtomicBool::new(false));
@@ -125,18 +141,29 @@ async fn scan_path(path: String, on_progress: Channel<ScanProgress>, state: Stat
       duration_ms: started.elapsed().as_millis() as u64,
       cancelled: scan_counters.is_cancelled(),
       inaccessible_count: scan_counters.inaccessible.load(Ordering::Relaxed),
+      can_clean,
     };
     let tree = ScanTree::build(output, &root_path, summary_input);
     let summary = tree.summary();
-    (tree, summary)
+    // Un análisis cortado no vale para comparar. Si el historial falla, el análisis sigue valiendo.
+    let comparison = match (&history_dir, summary.cancelled) {
+      (Some(history_dir), false) => history::record(history_dir, &tree).inspect_err(|error| eprintln!("historial: {error}")).ok(),
+      _ => None,
+    };
+    (tree, summary, comparison)
   })
   .await;
   finished.store(true, Ordering::SeqCst);
   state.scanning.store(false, Ordering::SeqCst);
 
-  let (tree, summary) = result.map_err(|error| error.to_string())?;
+  let (tree, summary, comparison) = result.map_err(|error| error.to_string())?;
   *state.tree.lock().map_err(|error| error.to_string())? = Some(tree);
+  *state.comparison.lock().map_err(|error| error.to_string())? = comparison;
   Ok(summary)
+}
+
+fn history_dir(app: &AppHandle) -> Option<PathBuf> {
+  app.path().app_data_dir().ok().map(|directory| directory.join(HISTORY_FOLDER_NAME))
 }
 
 fn spawn_progress_reporter(counters: Arc<ScanCounters>, finished: Arc<AtomicBool>, on_progress: Channel<ScanProgress>) {
@@ -246,6 +273,18 @@ fn cancel_duplicates(state: State<'_, AppState>) {
   }
 }
 
+/// Qué ha crecido desde el análisis anterior de la misma carpeta.
+#[tauri::command]
+fn get_scan_comparison(state: State<'_, AppState>) -> Result<Option<ScanComparison>, String> {
+  Ok(state.comparison.lock().map_err(|error| error.to_string())?.clone())
+
+}
+
+#[tauri::command]
+fn list_scanned_roots(app: AppHandle) -> Vec<ScannedRoot> {
+  history_dir(&app).map(|directory| history::list_roots(&directory)).unwrap_or_default()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -263,7 +302,9 @@ pub fn run() {
       purge_quarantine_batch,
       list_projects,
       find_duplicates,
-      cancel_duplicates
+      cancel_duplicates,
+      get_scan_comparison,
+      list_scanned_roots
     ])
     .run(tauri::generate_context!())
     .expect("error al arrancar discos-mapa");

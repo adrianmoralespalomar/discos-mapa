@@ -1,6 +1,6 @@
 [package]
 name = "discos-mapa"
-version = "0.2.0"
+version = "0.3.0"
 description = "Mapa visual de los discos con ayuda para decidir qué se puede borrar"
 authors = ["Adrián Morales"]
 license = "MIT"
