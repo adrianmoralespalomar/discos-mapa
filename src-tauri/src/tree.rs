@@ -412,9 +412,9 @@ impl ScanTree {
     (removed_size, 1)
   }
 
-  pub fn directory_size(&self, path: &str) -> Option<u64> {
-    let lower_path = normalize(path);
-    self.records.iter().find(|record| normalize(&record.path) == lower_path).map(|record| record.size)
+  /// Tamaño de cada carpeta por ruta en minúsculas, para consultar muchas seguidas sin recorrer el árbol cada vez.
+  pub fn directory_sizes(&self) -> HashMap<String, u64> {
+    self.records.iter().map(|record| (normalize(&record.path), record.size)).collect()
   }
 
   pub fn summary(&self) -> ScanSummary {

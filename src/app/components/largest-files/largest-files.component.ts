@@ -45,6 +45,11 @@ export class LargestFilesComponent {
     this.store.revealInExplorer(file.path);
   }
 
+  /** Ni en zonas protegidas ni en las que se limpian con su herramienta (Docker, emuladores…). */
+  protected canMoveToQuarantine(file: LargeFile): boolean {
+    return file.risk?.level !== 'protected' && file.risk?.action !== 'tool';
+  }
+
   onMoveToQuarantineButtonClicked(file: LargeFile): void {
     this.store.requestCleanup([{ path: file.path, name: file.name, size: file.size, action: 'item' }]);
   }

@@ -31,7 +31,7 @@
       class="cleanup-item"
       [style.--level-color]="riskLevelStyles[candidate.risk.level].color">
       <div class="cleanup-item-heading">
-        @if (candidate.risk.action !== 'manual') {
+        @if (isCleanable(candidate)) {
           <input
             type="checkbox"
             [attr.aria-label]="'Marcar ' + candidate.name"
@@ -51,7 +51,7 @@
         <span class="cleanup-item-action">Se aparta lo de dentro; la carpeta se queda.</span>
       }
       @if (candidate.risk.tip) {
-        <span class="cleanup-item-tip">{{ candidate.risk.action === 'manual' ? 'Se limpia aparte: ' : 'También: ' }}{{ candidate.risk.tip }}</span>
+        <span class="cleanup-item-tip">{{ isCleanable(candidate) ? 'También: ' : 'Se limpia aparte: ' }}{{ candidate.risk.tip }}</span>
       }
       <div class="cleanup-item-actions">
         <span class="cleanup-item-age">Último cambio {{ candidate.modified | age }}</span>

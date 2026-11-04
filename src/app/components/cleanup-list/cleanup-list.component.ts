@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { CLEANABLE_ACTIONS } from '../../models/cleanable-actions.const';
 import { CleanupCandidate } from '../../models/cleanup-candidate.interface';
 import { CleanupSelection } from '../../models/cleanup-selection.interface';
 import { RiskLevelTotal } from '../../models/risk-level-total.interface';
@@ -41,12 +42,18 @@ export class CleanupListComponent {
 
   protected readonly selectedSize = computed<number>(() => this.selectedCandidates().reduce((total, candidate) => total + candidate.size, 0));
 
+  protected isCleanable(candidate: CleanupCandidate): boolean {
+    return CLEANABLE_ACTIONS.includes(candidate.risk.action);
+  }
+
   onLevelFilterClicked(level: RiskLevel): void {
     this.selectedLevel.update((selected) => (selected === level ? undefined : level));
   }
 
   onSelectSafeButtonClicked(): void {
-    const safePaths = (this.store.summary()?.candidates ?? []).filter((candidate) => candidate.risk.level === 'safe' && candidate.risk.action !== 'manual').map((candidate) => candidate.path);
+    const safePaths = (this.store.summary()?.candidates ?? [])
+      .filter((candidate) => candidate.risk.level === 'safe' && this.isCleanable(candidate))
+      .map((candidate) => candidate.path);
     this.selectedPaths.set(new Set(safePaths));
   }
 

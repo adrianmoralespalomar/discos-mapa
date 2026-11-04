@@ -20,9 +20,10 @@ Por qué una cuarentena y no la Papelera: mover dentro del mismo disco es instan
 Qué nunca se toca:
 
 - Nada de nivel **No tocar** ni lo que haya dentro (el backend lo vuelve a comprobar aunque la interfaz lo pida).
-- Discos extraíbles o de red, y la raíz de un disco.
+- Discos extraíbles, de red o que no sean NTFS/ReFS (como la unidad de Google Drive), y la raíz de un disco.
+- Carpetas de OneDrive y ficheros que están solo en la nube: apartarlos los borraría en todos tus equipos.
 - Carpetas que Windows o un programa necesitan (como `Temp`): de esas solo se aparta lo de dentro.
-- Lo que tiene una herramienta oficial (`Windows.old`, `WinSxS`, la Papelera, emuladores de Android, Docker): solo se indica la herramienta.
+- Lo que tiene una herramienta oficial (`Windows.old`, la Papelera, emuladores de Android, el disco de Docker): solo se indica la herramienta, y no se puede apartar nada de dentro, ni siquiera un fichero suelto.
 
 ## Descargar
 

@@ -31,8 +31,12 @@ pub enum CleanupAction {
   Item,
   /// Se aparta lo de dentro y la carpeta se queda (Windows o el programa la necesitan).
   Contents,
-  /// No se hace desde la app: hay que usar la herramienta que indica el consejo.
+  /// Lo decide el usuario mirando uno a uno (Descargas, AppData): no se marca en bloque,
+  /// pero sí se puede apartar un fichero o una carpeta concretos.
   Manual,
+  /// Solo con la herramienta oficial que indica el consejo (Docker, emuladores, Windows.old…):
+  /// la app no aparta nada de dentro, ni siquiera ficheros sueltos.
+  Tool,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -55,6 +59,10 @@ impl RiskRule {
 
   const fn contents(self) -> Self {
     Self { action: CleanupAction::Contents, ..self }
+  }
+
+  const fn tool(self) -> Self {
+    Self { action: CleanupAction::Tool, ..self }
   }
 }
 
@@ -120,7 +128,7 @@ const PATH_RULES: &[(&str, RiskRule)] = &[
   ("{TEMP}", rule(Safe, "Temporales", "Ficheros temporales de tus programas. Los que estén en uso no se dejarán borrar.", Some(TIP_WINDOWS_TEMP_FILES)).contents()),
   ("{SystemRoot}\\Temp", rule(Safe, "Temporales", "Ficheros temporales de Windows.", Some(TIP_WINDOWS_TEMP_FILES)).contents()),
   ("{SystemRoot}\\SoftwareDistribution\\Download", rule(Safe, "Actualizaciones de Windows", "Descargas de Windows Update ya instaladas.", Some("Archivos temporales > Limpieza de Windows Update.")).contents()),
-  ("{SystemRoot}\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization", rule(Safe, "Actualizaciones de Windows", "Caché de Optimización de distribución (actualizaciones compartidas).", Some(TIP_WINDOWS_TEMP_FILES))),
+  ("{SystemRoot}\\ServiceProfiles\\NetworkService\\AppData\\Local\\Microsoft\\Windows\\DeliveryOptimization", rule(Safe, "Actualizaciones de Windows", "Caché de Optimización de distribución (actualizaciones compartidas).", Some(TIP_WINDOWS_TEMP_FILES)).tool()),
   ("{SystemRoot}\\Logs\\CBS", rule(Safe, "Registros", "Registros antiguos del servicio de componentes de Windows.", None).contents()),
   ("{SystemRoot}\\LiveKernelReports", rule(Safe, "Volcados de errores", "Informes de bloqueos del sistema.", None).contents()),
   ("{SystemRoot}\\Minidump", rule(Safe, "Volcados de errores", "Volcados de pantallazos azules antiguos.", None).contents()),
@@ -133,13 +141,13 @@ const PATH_RULES: &[(&str, RiskRule)] = &[
   ("{LOCALAPPDATA}\\NVIDIA\\DXCache", rule(Safe, "Caché de gráficos", "Caché de sombreadores de NVIDIA; se regenera.", None).contents()),
   ("{LOCALAPPDATA}\\NVIDIA\\GLCache", rule(Safe, "Caché de gráficos", "Caché de sombreadores de NVIDIA; se regenera.", None).contents()),
   ("{LOCALAPPDATA}\\AMD\\DxCache", rule(Safe, "Caché de gráficos", "Caché de sombreadores de AMD; se regenera.", None).contents()),
-  ("{SystemDrive}\\Windows.old", rule(Safe, "Windows anterior", "Copia de la instalación anterior de Windows; solo sirve para volver atrás.", Some("Bórrala con Archivos temporales > Instalación anterior de Windows, no a mano."))),
-  ("{SystemDrive}\\$WINDOWS.~BT", rule(Safe, "Windows anterior", "Restos de una actualización de Windows.", Some(TIP_WINDOWS_TEMP_FILES))),
-  ("{SystemDrive}\\$Windows.~WS", rule(Safe, "Windows anterior", "Restos de una actualización de Windows.", Some(TIP_WINDOWS_TEMP_FILES))),
+  ("{SystemDrive}\\Windows.old", rule(Safe, "Windows anterior", "Copia de la instalación anterior de Windows; solo sirve para volver atrás.", Some("Bórrala con Archivos temporales > Instalación anterior de Windows, no a mano.")).tool()),
+  ("{SystemDrive}\\$WINDOWS.~BT", rule(Safe, "Windows anterior", "Restos de una actualización de Windows.", Some(TIP_WINDOWS_TEMP_FILES)).tool()),
+  ("{SystemDrive}\\$Windows.~WS", rule(Safe, "Windows anterior", "Restos de una actualización de Windows.", Some(TIP_WINDOWS_TEMP_FILES)).tool()),
   // Herramientas de desarrollo
   ("{LOCALAPPDATA}\\npm-cache", rule(Probable, "Caché de paquetes", "Paquetes descargados por npm; se vuelven a bajar al instalar.", Some("npm cache clean --force")).contents()),
   ("{LOCALAPPDATA}\\Yarn\\Cache", rule(Probable, "Caché de paquetes", "Paquetes descargados por Yarn.", Some("yarn cache clean")).contents()),
-  ("{LOCALAPPDATA}\\pnpm\\store", rule(Probable, "Caché de paquetes", "Almacén de paquetes de pnpm.", Some("pnpm store prune"))),
+  ("{LOCALAPPDATA}\\pnpm\\store", rule(Probable, "Caché de paquetes", "Almacén de paquetes de pnpm.", Some("pnpm store prune")).tool()),
   ("{LOCALAPPDATA}\\pip\\cache", rule(Probable, "Caché de paquetes", "Paquetes descargados por pip.", Some("pip cache purge")).contents()),
   ("{USERPROFILE}\\.gradle\\caches", rule(Probable, "Caché de paquetes", "Caché de Gradle; se regenera (la siguiente compilación tardará más).", None).contents()),
   ("{USERPROFILE}\\.gradle\\wrapper\\dists", rule(Probable, "Caché de paquetes", "Versiones de Gradle descargadas; borra las que ya no uses.", None).contents()),
@@ -149,9 +157,9 @@ const PATH_RULES: &[(&str, RiskRule)] = &[
   ("{APPDATA}\\Code\\Cache", rule(Probable, "Caché de programa", "Caché de VS Code; se regenera.", None).contents()),
   ("{APPDATA}\\Code\\CachedData", rule(Probable, "Caché de programa", "Caché de VS Code; se regenera.", None).contents()),
   ("{APPDATA}\\Code\\CachedExtensionVSIXs", rule(Probable, "Caché de programa", "Instaladores de extensiones de VS Code ya instaladas.", None).contents()),
-  ("{LOCALAPPDATA}\\Android\\Sdk\\system-images", suggested(Review, "Emuladores", "Imágenes de emulador Android.", Some("Borra las versiones que no uses desde el SDK Manager de Android Studio."))),
-  ("{USERPROFILE}\\.android\\avd", suggested(Review, "Emuladores", "Emuladores Android creados.", Some("Bórralos desde el Device Manager de Android Studio."))),
-  ("{LOCALAPPDATA}\\Docker\\wsl", suggested(Review, "Docker", "Disco virtual de Docker con imágenes y volúmenes.", Some("docker system prune -a y después compacta el disco virtual."))),
+  ("{LOCALAPPDATA}\\Android\\Sdk\\system-images", suggested(Review, "Emuladores", "Imágenes de emulador Android.", Some("Borra las versiones que no uses desde el SDK Manager de Android Studio.")).tool()),
+  ("{USERPROFILE}\\.android\\avd", suggested(Review, "Emuladores", "Emuladores Android creados.", Some("Bórralos desde el Device Manager de Android Studio.")).tool()),
+  ("{LOCALAPPDATA}\\Docker\\wsl", suggested(Review, "Docker", "Disco virtual de Docker con imágenes y volúmenes.", Some("docker system prune -a y después compacta el disco virtual.")).tool()),
 ];
 
 #[derive(Clone, Copy)]
@@ -164,8 +172,8 @@ enum NameCondition {
 
 /// Reglas por nombre de carpeta, en orden de prioridad.
 const DIRECTORY_NAME_RULES: &[(&[&str], NameCondition, RiskRule)] = &[
-  (&["$recycle.bin"], NameCondition::DriveRoot, rule(Safe, "Papelera", "Papelera de reciclaje.", Some("Vacíala desde el escritorio."))),
-  (&[QUARANTINE_FOLDER_LOWER_NAME], NameCondition::DriveRoot, suggested(Review, "Cuarentena", "Lo que has apartado con Discos Mapa. No libera espacio hasta que la vacíes.", Some("Vacíala o restáurala desde la pestaña Cuarentena."))),
+  (&["$recycle.bin"], NameCondition::DriveRoot, rule(Safe, "Papelera", "Papelera de reciclaje.", Some("Vacíala desde el escritorio.")).tool()),
+  (&[QUARANTINE_FOLDER_LOWER_NAME], NameCondition::DriveRoot, suggested(Review, "Cuarentena", "Lo que has apartado con Discos Mapa. No libera espacio hasta que la vacíes.", Some("Vacíala o restáurala desde la pestaña Cuarentena.")).tool()),
   (&["system volume information"], NameCondition::DriveRoot, rule(Protected, "Sistema", "Puntos de restauración e información del sistema.", Some("Gestiona los puntos de restauración en Protección del sistema."))),
   (&[".git"], NameCondition::Anywhere, rule(Protected, "Repositorio", "Historial de un repositorio git. Si lo borras pierdes el historial local.", None)),
   (&[".ssh", ".gnupg"], NameCondition::Anywhere, rule(Protected, "Claves", "Claves de acceso. No se pueden recuperar si se borran.", None)),
@@ -182,7 +190,7 @@ const DIRECTORY_NAME_RULES: &[(&[&str], NameCondition, RiskRule)] = &[
 ];
 
 const RULE_PAGEFILE: RiskRule = rule(Protected, "Sistema", "Memoria virtual de Windows.", Some("Se ajusta en Rendimiento > Opciones avanzadas > Memoria virtual."));
-const RULE_HIBERFIL: RiskRule = suggested(Review, "Hibernación", "Fichero de hibernación. Si no usas hibernar, se puede desactivar.", Some("powercfg -h off (como administrador)."));
+const RULE_HIBERFIL: RiskRule = suggested(Review, "Hibernación", "Fichero de hibernación. Si no usas hibernar, se puede desactivar.", Some("powercfg -h off (como administrador).")).tool();
 const RULE_MEMORY_DUMP: RiskRule = rule(Safe, "Volcados de errores", "Volcado de memoria de un pantallazo azul antiguo.", None).item();
 
 pub struct RuleSet {

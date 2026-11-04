@@ -1,1 +1,1 @@
-export type CleanupAction = 'item' | 'contents' | 'manual';
+export type CleanupAction = 'item' | 'contents' | 'manual' | 'tool';

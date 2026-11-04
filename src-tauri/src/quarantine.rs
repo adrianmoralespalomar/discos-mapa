@@ -6,8 +6,10 @@
 //! - Se rechaza todo lo que esté en una zona protegida, en discos extraíbles o de red, y la raíz de un disco.
 
 use crate::rules::{CleanupAction, QUARANTINE_FOLDER_NAME, RiskLevel, RuleSet, normalize};
+use crate::scanner::CLOUD_ONLY_ATTRIBUTES;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::os::windows::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -15,6 +17,7 @@ const MANIFEST_FILE_NAME: &str = "manifiesto.json";
 const ITEMS_FOLDER_NAME: &str = "elementos";
 /// Cada cuántos elementos movidos se guarda el manifiesto (por si se cierra la app a mitad).
 const MANIFEST_SAVE_INTERVAL: usize = 200;
+const CLOUD_SYNC_FOLDER_VARIABLES: &[&str] = &["OneDrive", "OneDriveConsumer", "OneDriveCommercial"];
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -112,9 +115,9 @@ pub fn quarantine(requests: &[CleanupRequest], rules: &RuleSet, allowed_drives: 
           }
         }
       }
-      CleanupAction::Manual => report.failures.push(CleanupFailure {
+      CleanupAction::Manual | CleanupAction::Tool => report.failures.push(CleanupFailure {
         path: request.path.clone(),
-        reason: "Se limpia con la herramienta que se indica, no desde la app".into(),
+        reason: "No se limpia en bloque desde la app".into(),
       }),
     }
   }
@@ -142,12 +145,30 @@ fn validate(path: &Path, rules: &RuleSet, allowed_drives: &[String]) -> Result<(
   if lower_path.starts_with(&normalize(&quarantine_root(&drive).to_string_lossy())) {
     return Err("Ya está en la cuarentena".into());
   }
+  if is_inside_cloud_sync_folder(&lower_path) {
+    return Err("Está en una carpeta sincronizada con la nube: apartarlo lo borraría en todos tus equipos".into());
+  }
   let metadata = fs::symlink_metadata(path).map_err(|_| "Ya no existe".to_string())?;
+  if metadata.file_attributes() & CLOUD_ONLY_ATTRIBUTES != 0 {
+    return Err("Está solo en la nube: no ocupa espacio en este disco".into());
+  }
   let rule = rules.effective_rule_for_path(&lower_path, !metadata.is_dir());
   if let Some(rule) = rule.filter(|rule| rule.level == RiskLevel::Protected) {
     return Err(format!("Zona protegida ({}): {}", rule.category, rule.reason));
   }
+  if let Some(rule) = rule.filter(|rule| rule.action == CleanupAction::Tool) {
+    return Err(format!("Se limpia con su herramienta: {}", rule.tip.unwrap_or(rule.reason)));
+  }
   Ok(())
+}
+
+/// Carpetas de OneDrive: mover algo fuera de ellas lo borra también en la nube y en los demás equipos.
+fn is_inside_cloud_sync_folder(lower_path: &str) -> bool {
+  CLOUD_SYNC_FOLDER_VARIABLES
+    .iter()
+    .filter_map(|variable| std::env::var(variable).ok())
+    .map(|folder| normalize(&folder))
+    .any(|folder| !folder.is_empty() && (lower_path == folder || lower_path.starts_with(&format!("{folder}\\"))))
 }
 
 fn move_entry(path: &Path, open_batches: &mut Vec<OpenBatch>, report: &mut CleanupReport, size_of: &impl Fn(&str) -> Option<u64>) {

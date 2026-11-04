@@ -17,6 +17,7 @@ use tree::{ScanSummary, ScanTree, SummaryInput, TreeResponse};
 
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(120);
 const NO_SCAN_MESSAGE: &str = "No hay ningún análisis abierto";
+const LOCAL_FILE_SYSTEMS: &[&str] = &["NTFS", "REFS"];
 
 #[derive(Default)]
 struct AppState {
@@ -70,13 +71,15 @@ fn list_drives() -> Result<Vec<DriveInfo>, String> {
   Ok(drives)
 }
 
-/// Discos fijos del equipo, como `c:`. Son los únicos donde se permite limpiar.
+/// Discos fijos NTFS o ReFS del equipo, como `c:`. Son los únicos donde se permite limpiar
+/// (las unidades de Google Drive y similares se montan con otros sistemas de ficheros, como FAT32).
 fn fixed_drives() -> Vec<String> {
   sysinfo::Disks::new_with_refreshed_list()
     .map(|disks| {
       disks
         .iter()
         .filter(|disk| !disk.is_removable())
+        .filter(|disk| LOCAL_FILE_SYSTEMS.contains(&disk.file_system().to_string_lossy().to_uppercase().as_str()))
         .map(|disk| rules::normalize(&disk.mount_point().to_string_lossy()))
         .filter(|mount_point| mount_point.len() == 2)
         .collect()
@@ -163,7 +166,8 @@ fn get_tree(node_id: u32, depth: u8, state: State<'_, AppState>) -> Result<TreeR
 async fn quarantine_items(requests: Vec<CleanupRequest>, state: State<'_, AppState>) -> Result<CleanupResult, String> {
   let mut tree_guard = state.tree.lock().map_err(|error| error.to_string())?;
   let tree = tree_guard.as_mut().ok_or(NO_SCAN_MESSAGE)?;
-  let report = quarantine::quarantine(&requests, &tree.rules, &fixed_drives(), |path| tree.directory_size(path));
+  let directory_sizes = tree.directory_sizes();
+  let report = quarantine::quarantine(&requests, &tree.rules, &fixed_drives(), |path| directory_sizes.get(&rules::normalize(path)).copied());
   let moved_paths: Vec<(String, u64)> = report.moved.iter().map(|item| (item.original_path.clone(), item.size)).collect();
   tree.remove_moved(&moved_paths);
   Ok(CleanupResult { report, summary: tree.summary() })

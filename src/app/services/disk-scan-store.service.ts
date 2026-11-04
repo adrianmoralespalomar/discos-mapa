@@ -4,6 +4,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { revealItemInDir } from '@tauri-apps/plugin-opener';
 import { Ancestor } from '../models/ancestor.interface';
 import { AppScreen } from '../models/app-screen.type';
+import { CLEANABLE_ACTIONS } from '../models/cleanable-actions.const';
 import { CleanupReport } from '../models/cleanup-report.interface';
 import { CleanupRequest } from '../models/cleanup-request.interface';
 import { CleanupResult } from '../models/cleanup-result.interface';
@@ -109,7 +110,7 @@ export class DiskScanStore {
 
   /** Abre la confirmación; no se mueve nada hasta `confirmCleanup`. */
   requestCleanup(selections: CleanupSelection[]): void {
-    const cleanable = selections.filter((selection) => selection.action !== 'manual');
+    const cleanable = selections.filter((selection) => CLEANABLE_ACTIONS.includes(selection.action));
     if (!cleanable.length) return;
     this.cleanupReport.set(undefined);
     this.pendingCleanup.set(cleanable);
