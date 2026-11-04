@@ -9,7 +9,10 @@ import { CleanupReport } from '../models/cleanup-report.interface';
 import { CleanupRequest } from '../models/cleanup-request.interface';
 import { CleanupResult } from '../models/cleanup-result.interface';
 import { CleanupSelection } from '../models/cleanup-selection.interface';
+import { DevelopmentProject } from '../models/development-project.interface';
 import { DriveInfo } from '../models/drive-info.interface';
+import { DuplicateProgress } from '../models/duplicate-progress.interface';
+import { DuplicatesResult } from '../models/duplicates-result.interface';
 import { PurgeReport } from '../models/purge-report.interface';
 import { QuarantineBatch } from '../models/quarantine-batch.interface';
 import { RiskInfo } from '../models/risk-info.interface';
@@ -30,6 +33,9 @@ export class DiskScanStore {
   readonly colorMode = signal<TreemapColorMode>('category');
   readonly currentNode = signal<TreeNode | undefined>(undefined);
   readonly drives = signal<DriveInfo[]>([]);
+  readonly duplicateProgress = signal<DuplicateProgress | undefined>(undefined);
+  readonly duplicates = signal<DuplicatesResult | undefined>(undefined);
+  readonly duplicatesSearching = signal<boolean>(false);
   readonly errorMessage = signal<string | undefined>(undefined);
   readonly hoveredNode = signal<TreeNode | undefined>(undefined);
   /** Regla del elemento señalado, propia o heredada de su carpeta. */
@@ -37,6 +43,7 @@ export class DiskScanStore {
   /** Lo que espera confirmación para ir a la cuarentena. */
   readonly pendingCleanup = signal<CleanupSelection[] | undefined>(undefined);
   readonly progress = signal<ScanProgress | undefined>(undefined);
+  readonly projects = signal<DevelopmentProject[]>([]);
   readonly quarantineBatches = signal<QuarantineBatch[]>([]);
   readonly scanningPath = signal<string>('');
   readonly screen = signal<AppScreen>('drives');
@@ -66,6 +73,8 @@ export class DiskScanStore {
     try {
       const summary = await invoke<ScanSummary>('scan_path', { path, onProgress });
       this.summary.set(summary);
+      this.duplicates.set(undefined);
+      this.projects.set([]);
       await this.openDirectory(summary.rootId);
       this.screen.set('results');
     } catch (error) {
@@ -125,6 +134,7 @@ export class DiskScanStore {
       const result = await invoke<CleanupResult>('quarantine_items', { requests });
       this.summary.set(result.summary);
       this.cleanupReport.set(result.report);
+      this.forgetMovedPaths(result.report.moved.map((item) => item.originalPath));
       const currentNodeId = this.currentNode()?.id;
       if (currentNodeId !== null && currentNodeId !== undefined) await this.openDirectory(currentNodeId);
     } catch (error) {
@@ -138,6 +148,46 @@ export class DiskScanStore {
   closeCleanupDialog(): void {
     this.pendingCleanup.set(undefined);
     this.cleanupReport.set(undefined);
+  }
+
+  async loadProjects(): Promise<void> {
+    try {
+      this.projects.set(await invoke<DevelopmentProject[]>('list_projects'));
+    } catch (error) {
+      this.errorMessage.set(`No se han podido buscar los proyectos: ${error}`);
+    }
+  }
+
+  async findDuplicates(minSize: number): Promise<void> {
+    const onProgress = new Channel<DuplicateProgress>();
+    onProgress.onmessage = (progress: DuplicateProgress) => this.duplicateProgress.set(progress);
+    this.duplicateProgress.set(undefined);
+    this.duplicatesSearching.set(true);
+    try {
+      this.duplicates.set(await invoke<DuplicatesResult>('find_duplicates', { minSize, onProgress }));
+    } catch (error) {
+      this.errorMessage.set(`No se han podido buscar duplicados: ${error}`);
+    } finally {
+      this.duplicatesSearching.set(false);
+    }
+  }
+
+  async cancelDuplicates(): Promise<void> {
+    await invoke('cancel_duplicates');
+  }
+
+  /** Quita de los duplicados y de los proyectos lo que ya se ha apartado. */
+  private forgetMovedPaths(movedPaths: string[]): void {
+    const moved = new Set(movedPaths.map((path) => path.toLowerCase()));
+    const duplicates = this.duplicates();
+    if (duplicates) {
+      const groups = duplicates.groups
+        .map((group) => ({ ...group, files: group.files.filter((file) => !moved.has(file.path.toLowerCase())) }))
+        .filter((group) => group.files.length > 1)
+        .map((group) => ({ ...group, wastedSize: group.size * (group.files.length - 1) }));
+      this.duplicates.set({ ...duplicates, groups, wastedSize: groups.reduce((total, group) => total + group.wastedSize, 0) });
+    }
+    if (this.projects().length) this.loadProjects();
   }
 
   async loadQuarantine(): Promise<void> {

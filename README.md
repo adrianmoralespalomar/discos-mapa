@@ -6,7 +6,8 @@ Mapa visual de lo que ocupa cada carpeta de tus discos (al estilo de WinDirStat)
 - **Liberar espacio**: lista de sitios que se pueden limpiar, con el porqué y, cuando existe, la forma oficial de hacerlo (`npm cache clean`, Archivos temporales de Windows, `DISM`…).
 - **Más grandes**: los 200 ficheros que más ocupan, con filtro para los que llevan más de un año sin tocarse.
 - **Tipos**: cuánto ocupa cada tipo de fichero y cada extensión.
-
+- **Proyectos**: proyectos de código (Node, Rust, .NET, Gradle, Python, Maven) sin tocar desde hace 30, 90, 180 o 365 días, con sus carpetas regenerables (`node_modules`, `dist`, `target`, `bin/obj`…) y un botón para apartarlas. La actividad se mide sin contar esas carpetas.
+- **Duplicados**: ficheros de más de 1 MB con exactamente el mismo contenido, con la opción **Dejar solo la más antigua**.
 - **Cuarentena**: lo que marcas para limpiar se aparta a `X:\DiscosMapa-Cuarentena` en el mismo disco. Se puede restaurar en cualquier momento, y solo se borra de verdad cuando vacías un lote.
 
 ## Cómo funciona la limpieza
@@ -54,6 +55,12 @@ Reglas generales:
 - No entra en enlaces simbólicos ni uniones (*junctions*), para no contar dos veces ni entrar en bucles.
 - Los ficheros de OneDrive que están solo en la nube cuentan 0 bytes.
 - Pendiente: los enlaces duros (frecuentes en `WinSxS`) se cuentan una vez por enlace, así que esa carpeta aparece más grande de lo que es.
+## Cómo se buscan los duplicados
+
+- Solo en tus carpetas: no entra en programas, `AppData`, carpetas que empiezan por punto, zonas con herramienta oficial ni carpetas regenerables o seguras de borrar (ahí los repetidos son normales).
+- Primero agrupa por tamaño, luego compara el principio y el final de cada fichero y, solo si coinciden, el contenido entero (BLAKE3).
+- Los enlaces duros al mismo fichero no cuentan como copias.
+- Dentro de cada grupo, la primera es la más antigua.
 
 ## Desarrollo
 
@@ -88,9 +95,10 @@ cd src-tauri && cargo run --release --example escanear -- "C:\Users"
 - `src-tauri/src/rules.rs`: reglas de lo que se puede borrar.
 - `src-tauri/src/tree.rs`: árbol en memoria y vistas reducidas que se envían a la interfaz (nunca el árbol entero).
 - `src-tauri/src/quarantine.rs`: apartar, restaurar y vaciar la cuarentena.
+- `src-tauri/src/projects.rs`: proyectos de código y sus carpetas regenerables.
+- `src-tauri/src/duplicates.rs`: búsqueda de ficheros repetidos.
 - `src/app`: interfaz en Angular. El mapa se dibuja en un `canvas` con `d3-hierarchy`.
 
 ## Próximas fases
 
-1. Duplicados y modo desarrollador (limpiar proyectos inactivos).
-2. Historial de análisis para ver qué ha crecido, escaneo del NAS y alertas.
+1. Historial de análisis para ver qué ha crecido, escaneo del NAS y alertas.

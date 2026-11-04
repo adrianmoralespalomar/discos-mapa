@@ -25,6 +25,8 @@ pub struct DirectoryRecord {
   pub size: u64,
   pub file_count: u64,
   pub newest_modified: u64,
+  pub own_files_modified: u64,
+  pub markers: u16,
   pub inaccessible: bool,
   pub files: Vec<ScannedFile>,
   pub other_files_size: u64,
@@ -195,6 +197,8 @@ impl ScanTree {
         size: directory.size,
         file_count: directory.file_count,
         newest_modified: directory.newest_modified,
+        own_files_modified: directory.own_files_modified,
+        markers: directory.markers,
         inaccessible: directory.inaccessible,
         files: directory.files,
         other_files_size: directory.other_files_size,
@@ -217,6 +221,20 @@ impl ScanTree {
       summary_input,
       removed_paths: Vec::new(),
     }
+  }
+
+  /// Regla efectiva de cada carpeta en una sola pasada (los padres siempre tienen un id menor que sus hijos).
+  pub fn effective_rules(&self) -> Vec<Option<RiskRule>> {
+    let mut effective: Vec<Option<RiskRule>> = Vec::with_capacity(self.records.len());
+    for record in &self.records {
+      let inherited = record.parent.map_or(self.root_inherited_risk, |parent| effective[parent as usize]);
+      effective.push(record.risk.or(inherited));
+    }
+    effective
+  }
+
+  pub fn effective_levels(&self) -> Vec<Option<RiskLevel>> {
+    self.effective_rules().into_iter().map(|rule| rule.map(|rule| rule.level)).collect()
   }
 
   /// Regla propia o heredada del antepasado más cercano.

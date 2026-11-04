@@ -1,0 +1,57 @@
+<span class="projects-intro">Proyectos de código con carpetas que se regeneran solas al compilar o instalar. La actividad no cuenta esas carpetas.</span>
+
+<div class="projects-filter">
+  <label>
+    Sin tocar desde hace más de
+    <select
+      [value]="inactivityDays()"
+      (change)="onInactivityChanged($event)">
+      @for (days of inactivityOptions; track days) {
+        <option [value]="days">{{ days }} días</option>
+      }
+    </select>
+  </label>
+</div>
+
+@if (inactiveProjects().length) {
+  <div class="projects-summary">
+    <span>{{ inactiveProjects().length }} {{ inactiveProjects().length === 1 ? 'proyecto' : 'proyectos' }}, {{ inactiveSize() | bytes }} regenerables</span>
+    <button
+      type="button"
+      (click)="onCleanAllButtonClicked()">Limpiar todos</button>
+  </div>
+}
+
+<ul class="projects-list">
+  @for (project of inactiveProjects(); track project.path) {
+    <li class="project">
+      <div class="project-heading">
+        <span class="project-name">{{ project.name }}</span>
+        <span class="project-size">{{ project.regenerableSize | bytes }}</span>
+      </div>
+      <span
+        class="project-path"
+        [title]="project.path">{{ project.path }}</span>
+      <span class="project-meta">{{ project.kind }}, último cambio {{ project.lastActivity | age }}</span>
+      <ul class="project-folders">
+        @for (folder of project.folders; track folder.path) {
+          <li>
+            <span>{{ folder.name }}</span>
+            <span class="project-folder-size">{{ folder.size | bytes }}</span>
+          </li>
+        }
+      </ul>
+      <div class="project-actions">
+        <button
+          type="button"
+          (click)="onShowInMapButtonClicked(project)">Ver en el mapa</button>
+        <button
+          class="project-clean"
+          type="button"
+          (click)="onCleanProjectButtonClicked(project)">Limpiar</button>
+      </div>
+    </li>
+  } @empty {
+    <li class="projects-empty">No hay proyectos sin tocar en ese tiempo con carpetas regenerables.</li>
+  }
+</ul>

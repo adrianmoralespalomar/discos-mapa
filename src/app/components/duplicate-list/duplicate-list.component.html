@@ -1,0 +1,71 @@
+<span class="duplicates-intro">Ficheros de más de {{ minSize | bytes }} con exactamente el mismo contenido. Solo se buscan en tus carpetas: no en programas, AppData, cachés ni carpetas regenerables. Hay que leer los ficheros, así que puede tardar.</span>
+
+@if (store.duplicatesSearching()) {
+  <div
+    class="duplicates-progress"
+    aria-live="polite">
+    <span>{{ (store.duplicateProgress()?.listedFiles ?? 0) | number: '1.0-0' : 'es' }} ficheros revisados</span>
+    <span class="duplicates-bar">
+      <span
+        class="duplicates-bar-fill"
+        [style.width.%]="hashedPercent()"></span>
+    </span>
+    <span>Comparando contenido: {{ (store.duplicateProgress()?.hashedBytes ?? 0) | bytes }} de {{ (store.duplicateProgress()?.bytesToHash ?? 0) | bytes }}</span>
+    <button
+      type="button"
+      (click)="onStopButtonClicked()">Detener</button>
+  </div>
+} @else {
+  <button
+    class="duplicates-search"
+    type="button"
+    (click)="onSearchButtonClicked()">{{ store.duplicates() ? 'Buscar de nuevo' : 'Buscar duplicados' }}</button>
+}
+
+@if (store.duplicates(); as result) {
+  <span class="duplicates-summary">
+    @if (result.groups.length) {
+      <strong>{{ result.wastedSize | bytes }}</strong> repetidos en {{ result.groups.length }} {{ result.groups.length === 1 ? 'grupo' : 'grupos' }}.
+    } @else {
+      No hay ficheros repetidos.
+    }
+    {{ result.cancelled ? 'Búsqueda detenida: faltan resultados.' : '' }}
+  </span>
+
+  <ul class="duplicates-groups">
+    @for (group of result.groups; track group.files[0].path) {
+      <li class="duplicate-group">
+        <div class="duplicate-group-heading">
+          <span>{{ group.files.length }} copias de {{ group.size | bytes }}</span>
+          <span class="duplicate-group-wasted">{{ group.wastedSize | bytes }}</span>
+        </div>
+        <ol class="duplicate-files">
+          @for (file of group.files; track file.path; let first = $first) {
+            <li>
+              <span class="duplicate-file-name">{{ fileName(file) }}</span>
+              <span
+                class="duplicate-file-path"
+                [title]="file.path">{{ folderOf(file) }}</span>
+              <span class="duplicate-file-meta">
+                {{ first ? 'La más antigua, ' : '' }}{{ file.modified | age }}
+                <button
+                  type="button"
+                  (click)="onShowFolderButtonClicked(file)">Ver carpeta</button>
+                <button
+                  type="button"
+                  (click)="onOpenInExplorerButtonClicked(file)">Explorador</button>
+                <button
+                  type="button"
+                  (click)="onMoveFileButtonClicked(file, group)">Apartar</button>
+              </span>
+            </li>
+          }
+        </ol>
+        <button
+          class="duplicate-keep-oldest"
+          type="button"
+          (click)="onKeepOldestButtonClicked(group)">Dejar solo la más antigua</button>
+      </li>
+    }
+  </ul>
+}

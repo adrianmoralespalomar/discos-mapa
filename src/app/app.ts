@@ -2,9 +2,11 @@ import { Component, inject } from '@angular/core';
 import { CleanupDialogComponent } from './components/cleanup-dialog/cleanup-dialog.component';
 import { CleanupListComponent } from './components/cleanup-list/cleanup-list.component';
 import { DriveListComponent } from './components/drive-list/drive-list.component';
+import { DuplicateListComponent } from './components/duplicate-list/duplicate-list.component';
 import { FileTypesComponent } from './components/file-types/file-types.component';
 import { InfoBarComponent } from './components/info-bar/info-bar.component';
 import { LargestFilesComponent } from './components/largest-files/largest-files.component';
+import { ProjectListComponent } from './components/project-list/project-list.component';
 import { QuarantineListComponent } from './components/quarantine-list/quarantine-list.component';
 import { ScanProgressComponent } from './components/scan-progress/scan-progress.component';
 import { TreemapComponent } from './components/treemap/treemap.component';
@@ -21,9 +23,11 @@ import { DiskScanStore } from './services/disk-scan-store.service';
     CleanupDialogComponent,
     CleanupListComponent,
     DriveListComponent,
+    DuplicateListComponent,
     FileTypesComponent,
     InfoBarComponent,
     LargestFilesComponent,
+    ProjectListComponent,
     QuarantineListComponent,
     ScanProgressComponent,
     TreemapComponent,

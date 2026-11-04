@@ -1,9 +1,13 @@
+pub mod duplicates;
 pub mod file_types;
+pub mod projects;
 pub mod quarantine;
 pub mod rules;
 pub mod scanner;
 pub mod tree;
 
+use duplicates::{DuplicateCounters, DuplicatesResult};
+use projects::ProjectView;
 use quarantine::{CleanupReport, CleanupRequest, PurgeReport, QuarantineBatch};
 use scanner::ScanCounters;
 use serde::Serialize;
@@ -24,6 +28,15 @@ struct AppState {
   tree: Mutex<Option<ScanTree>>,
   cancelled: Arc<AtomicBool>,
   scanning: AtomicBool,
+  duplicate_counters: Mutex<Option<Arc<DuplicateCounters>>>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct DuplicateProgress {
+  listed_files: u64,
+  hashed_bytes: u64,
+  bytes_to_hash: u64,
 }
 
 #[derive(Serialize)]
@@ -188,6 +201,51 @@ async fn purge_quarantine_batch(batch_path: String) -> Result<PurgeReport, Strin
   quarantine::purge(&batch_path)
 }
 
+#[tauri::command]
+fn list_projects(state: State<'_, AppState>) -> Result<Vec<ProjectView>, String> {
+  let tree = state.tree.lock().map_err(|error| error.to_string())?;
+  Ok(projects::find_projects(tree.as_ref().ok_or(NO_SCAN_MESSAGE)?))
+}
+
+#[tauri::command]
+async fn find_duplicates(min_size: u64, on_progress: Channel<DuplicateProgress>, state: State<'_, AppState>) -> Result<DuplicatesResult, String> {
+  let directories = {
+    let tree = state.tree.lock().map_err(|error| error.to_string())?;
+    duplicates::searchable_directories(tree.as_ref().ok_or(NO_SCAN_MESSAGE)?)
+  };
+  let counters = Arc::new(DuplicateCounters::default());
+  *state.duplicate_counters.lock().map_err(|error| error.to_string())? = Some(counters.clone());
+
+  let finished = Arc::new(AtomicBool::new(false));
+  let progress_counters = counters.clone();
+  let progress_finished = finished.clone();
+  std::thread::spawn(move || {
+    while !progress_finished.load(Ordering::SeqCst) {
+      let progress = DuplicateProgress {
+        listed_files: progress_counters.listed_files.load(Ordering::Relaxed),
+        hashed_bytes: progress_counters.hashed_bytes.load(Ordering::Relaxed),
+        bytes_to_hash: progress_counters.bytes_to_hash.load(Ordering::Relaxed),
+      };
+      if on_progress.send(progress).is_err() {
+        return;
+      }
+      std::thread::sleep(PROGRESS_INTERVAL);
+    }
+  });
+
+  let search_counters = counters.clone();
+  let result = tauri::async_runtime::spawn_blocking(move || duplicates::find(directories, min_size, &search_counters)).await;
+  finished.store(true, Ordering::SeqCst);
+  result.map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn cancel_duplicates(state: State<'_, AppState>) {
+  if let Ok(Some(counters)) = state.duplicate_counters.lock().as_deref() {
+    counters.cancelled.store(true, Ordering::SeqCst);
+  }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -202,7 +260,10 @@ pub fn run() {
       quarantine_items,
       list_quarantine,
       restore_quarantine_batch,
-      purge_quarantine_batch
+      purge_quarantine_batch,
+      list_projects,
+      find_duplicates,
+      cancel_duplicates
     ])
     .run(tauri::generate_context!())
     .expect("error al arrancar discos-mapa");

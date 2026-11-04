@@ -1,0 +1,137 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+span.projects-intro {
+  color: var(--color-ink-soft);
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+div.projects-filter {
+  font-size: 0.85rem;
+
+  select {
+    font: inherit;
+    margin-left: 4px;
+    padding: 2px 4px;
+  }
+}
+
+div.projects-summary {
+  align-items: center;
+  background: var(--color-ink);
+  border-radius: 4px;
+  color: var(--color-panel);
+  display: flex;
+  font-variant-numeric: tabular-nums;
+  gap: 10px;
+  justify-content: space-between;
+  padding: 10px 12px;
+
+  button {
+    background: var(--color-panel);
+    border: none;
+    border-radius: 3px;
+    color: var(--color-ink);
+    font-weight: 600;
+    padding: 6px 12px;
+    white-space: nowrap;
+  }
+}
+
+ul.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li.project {
+  background: var(--color-panel);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+
+  div.project-heading {
+    align-items: baseline;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  span.project-name {
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span.project-size {
+    font-family: var(--font-condensed);
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  span.project-path,
+  span.project-meta {
+    color: var(--color-ink-soft);
+    display: block;
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  ul.project-folders {
+    list-style: none;
+    margin: 2px 0 0;
+    padding: 0;
+
+    li {
+      display: flex;
+      font-size: 0.8rem;
+      justify-content: space-between;
+    }
+  }
+
+  span.project-folder-size {
+    color: var(--color-ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  div.project-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 2px;
+
+    button {
+      background: none;
+      border: none;
+      color: var(--color-accent);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
+li.projects-empty {
+  color: var(--color-ink-soft);
+  padding: 12px 0;
+}

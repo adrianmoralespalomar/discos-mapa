@@ -1,0 +1,147 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+span.duplicates-intro,
+span.duplicates-summary {
+  color: var(--color-ink-soft);
+  display: block;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+span.duplicates-summary strong {
+  color: var(--color-ink);
+}
+
+button.duplicates-search {
+  align-self: flex-start;
+  background: var(--color-ink);
+  border: none;
+  border-radius: 3px;
+  color: var(--color-panel);
+  font-weight: 600;
+  padding: 8px 14px;
+}
+
+div.duplicates-progress {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  gap: 6px;
+
+  span.duplicates-bar {
+    background: var(--color-paper);
+    display: block;
+    height: 6px;
+  }
+
+  span.duplicates-bar-fill {
+    background: var(--color-accent);
+    display: block;
+    height: 100%;
+  }
+
+  button {
+    align-self: flex-start;
+    background: none;
+    border: 1px solid var(--color-line);
+    border-radius: 3px;
+    font-weight: 600;
+    padding: 4px 10px;
+  }
+}
+
+ul.duplicates-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li.duplicate-group {
+  background: var(--color-panel);
+  border-left: 3px solid var(--color-accent);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+
+  div.duplicate-group-heading {
+    align-items: baseline;
+    display: flex;
+    font-weight: 600;
+    justify-content: space-between;
+  }
+
+  span.duplicate-group-wasted {
+    font-family: var(--font-condensed);
+    font-size: 1.05rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+  }
+
+  ol.duplicate-files {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  span.duplicate-file-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span.duplicate-file-path {
+    color: var(--color-ink-soft);
+    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span.duplicate-file-meta {
+    align-items: center;
+    color: var(--color-ink-soft);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 8px;
+  }
+
+  span.duplicate-file-meta button,
+  button.duplicate-keep-oldest {
+    background: none;
+    border: none;
+    color: var(--color-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  button.duplicate-keep-oldest {
+    align-self: flex-end;
+    font-size: 0.8rem;
+  }
+}
