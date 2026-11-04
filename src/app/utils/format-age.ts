@@ -1,4 +1,4 @@
-const SECONDS_PER_DAY = 24 * 3600;
+import { SECONDS_PER_DAY } from '../models/format-units.const';
 
 /** "hoy", "hace 3 días", "hace 2 años"… a partir de segundos Unix. */
 export function formatAge(unixSeconds: number): string {

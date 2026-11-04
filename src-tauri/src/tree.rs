@@ -413,9 +413,7 @@ impl ScanTree {
           modified: record.newest_modified,
           risk: RiskView { rule, inherited: false },
         });
-        if rule.level != RiskLevel::Review {
-          continue;
-        }
+        continue;
       }
       for file in &record.files {
         let Some(rule) = self.rules.classify_file(&normalize(&record.path), &file.name.to_lowercase()) else { continue };

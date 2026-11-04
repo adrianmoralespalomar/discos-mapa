@@ -1,26 +1,30 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, afterRenderEffect, computed, inject, signal, viewChild } from '@angular/core';
-import { HierarchyRectangularNode, hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
+import { hierarchy, treemap, treemapSquarify } from 'd3-hierarchy';
+import { CanvasSize } from '../../models/canvas-size.interface';
 import { DIRECTORY_COLOR, FILE_CATEGORY_STYLES, GROUP_COLOR } from '../../models/file-category-styles.const';
+import { LayoutNode } from '../../models/layout-node.type';
 import { RISK_LEVEL_STYLES, UNCLASSIFIED_COLOR } from '../../models/risk-level-styles.const';
 import { TreeNode } from '../../models/tree-node.interface';
 import { TreemapColorMode } from '../../models/treemap-color-mode.type';
-import { TREEMAP_HEADER_HEIGHT, TREEMAP_MIN_HEADER_HEIGHT, TREEMAP_MIN_HEADER_WIDTH } from '../../models/treemap-settings.const';
+import {
+  TREEMAP_CLICK_TARGET_COLOR,
+  TREEMAP_FRAME_COLOR,
+  TREEMAP_GAP_COLOR,
+  TREEMAP_GROUP_HATCH_COLOR,
+  TREEMAP_HEADER_HEIGHT,
+  TREEMAP_HEADER_TEXT_COLOR,
+  TREEMAP_HOVER_COLOR,
+  TREEMAP_LEAF_TEXT_COLOR,
+  TREEMAP_MIN_HEADER_HEIGHT,
+  TREEMAP_MIN_HEADER_WIDTH,
+  TREEMAP_MIN_LABEL_HEIGHT,
+  TREEMAP_MIN_LABEL_WIDTH,
+  TREEMAP_MIN_SIZE_LABEL_HEIGHT,
+} from '../../models/treemap-settings.const';
 import { DiskScanStore } from '../../services/disk-scan-store.service';
 import { effectiveRisk } from '../../utils/effective-risk';
 import { formatBytes } from '../../utils/format-bytes';
 import { shadeColor, withAlpha } from '../../utils/shade-color';
-
-type LayoutNode = HierarchyRectangularNode<TreeNode>;
-
-const FRAME_COLOR = '#cfd8de';
-const GAP_COLOR = '#e9eef0';
-const HEADER_TEXT_COLOR = '#1e2d3d';
-const LEAF_TEXT_COLOR = 'rgba(255, 255, 255, 0.94)';
-const HOVER_COLOR = '#ffffff';
-const CLICK_TARGET_COLOR = '#1e2d3d';
-const MIN_LABEL_WIDTH = 54;
-const MIN_LABEL_HEIGHT = 18;
-const MIN_SIZE_LABEL_HEIGHT = 32;
 
 @Component({
   selector: 'app-treemap',
@@ -35,7 +39,7 @@ export class TreemapComponent {
 
   private readonly mapCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('mapCanvas');
   private readonly overlayCanvas = viewChild.required<ElementRef<HTMLCanvasElement>>('overlayCanvas');
-  private readonly canvasSize = signal({ width: 0, height: 0 });
+  private readonly canvasSize = signal<CanvasSize>({ width: 0, height: 0 });
   private readonly hoveredLayoutNode = signal<LayoutNode | undefined>(undefined);
 
   private readonly layout = computed<LayoutNode | undefined>(() => {
@@ -74,7 +78,7 @@ export class TreemapComponent {
   private drawMap(root: LayoutNode | undefined, colorMode: TreemapColorMode): void {
     const context = this.prepareCanvas(this.mapCanvas().nativeElement);
     if (!context || !root) return;
-    context.fillStyle = GAP_COLOR;
+    context.fillStyle = TREEMAP_GAP_COLOR;
     context.fillRect(0, 0, root.x1, root.y1);
     context.textBaseline = 'middle';
     for (const layoutNode of root.descendants()) {
@@ -100,7 +104,7 @@ export class TreemapComponent {
   private drawDirectoryFrame(context: CanvasRenderingContext2D, layoutNode: LayoutNode, colorMode: TreemapColorMode): void {
     const width = layoutNode.x1 - layoutNode.x0;
     const height = layoutNode.y1 - layoutNode.y0;
-    context.fillStyle = FRAME_COLOR;
+    context.fillStyle = TREEMAP_FRAME_COLOR;
     context.fillRect(layoutNode.x0, layoutNode.y0, width, height);
     if (colorMode === 'risk') {
       const risk = effectiveRisk(layoutNode);
@@ -109,7 +113,7 @@ export class TreemapComponent {
     }
     if (!this.hasRoomForHeader(layoutNode)) return;
     context.font = '600 11px "Barlow Semi Condensed", sans-serif';
-    context.fillStyle = HEADER_TEXT_COLOR;
+    context.fillStyle = TREEMAP_HEADER_TEXT_COLOR;
     const label = `${layoutNode.data.name}   ${formatBytes(layoutNode.data.size)}`;
     this.fillTruncatedText(context, label, layoutNode.x0 + 4, layoutNode.y0 + TREEMAP_HEADER_HEIGHT / 2 + 1, width - 8);
   }
@@ -126,11 +130,11 @@ export class TreemapComponent {
     context.fillStyle = gradient;
     context.fillRect(layoutNode.x0, layoutNode.y0, width, height);
     if (layoutNode.data.kind === 'group') this.drawGroupHatching(context, layoutNode);
-    if (width < MIN_LABEL_WIDTH || height < MIN_LABEL_HEIGHT) return;
+    if (width < TREEMAP_MIN_LABEL_WIDTH || height < TREEMAP_MIN_LABEL_HEIGHT) return;
     context.font = '500 11px "Barlow", sans-serif';
-    context.fillStyle = LEAF_TEXT_COLOR;
+    context.fillStyle = TREEMAP_LEAF_TEXT_COLOR;
     this.fillTruncatedText(context, layoutNode.data.name, layoutNode.x0 + 4, layoutNode.y0 + 9, width - 8);
-    if (height < MIN_SIZE_LABEL_HEIGHT) return;
+    if (height < TREEMAP_MIN_SIZE_LABEL_HEIGHT) return;
     context.font = '400 11px "Barlow Semi Condensed", sans-serif';
     this.fillTruncatedText(context, formatBytes(layoutNode.data.size), layoutNode.x0 + 4, layoutNode.y0 + 23, width - 8);
   }
@@ -153,7 +157,7 @@ export class TreemapComponent {
     context.rect(layoutNode.x0, layoutNode.y0, layoutNode.x1 - layoutNode.x0, height);
     context.clip();
     context.beginPath();
-    context.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    context.strokeStyle = TREEMAP_GROUP_HATCH_COLOR;
     context.lineWidth = 1;
     for (let offset = layoutNode.x0 - height; offset < layoutNode.x1; offset += 6) {
       context.moveTo(offset, layoutNode.y1);
@@ -176,8 +180,8 @@ export class TreemapComponent {
     // Tras cambiar de carpeta, el nodo señalado pertenece al mapa anterior.
     if (!context || !root || !hoveredLayoutNode || hoveredLayoutNode.ancestors().at(-1) !== root) return;
     const clickTarget = this.clickTargetOf(hoveredLayoutNode);
-    if (clickTarget && clickTarget !== hoveredLayoutNode) this.strokeNode(context, clickTarget, CLICK_TARGET_COLOR);
-    this.strokeNode(context, hoveredLayoutNode, HOVER_COLOR);
+    if (clickTarget && clickTarget !== hoveredLayoutNode) this.strokeNode(context, clickTarget, TREEMAP_CLICK_TARGET_COLOR);
+    this.strokeNode(context, hoveredLayoutNode, TREEMAP_HOVER_COLOR);
   }
 
   private strokeNode(context: CanvasRenderingContext2D, layoutNode: LayoutNode, color: string): void {

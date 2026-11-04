@@ -1,5 +1,4 @@
-const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'];
-const BYTE_STEP = 1024;
+import { BYTE_STEP, BYTE_UNITS } from '../models/format-units.const';
 
 export function formatBytes(bytes: number): string {
   if (bytes < BYTE_STEP) return `${bytes} B`;
